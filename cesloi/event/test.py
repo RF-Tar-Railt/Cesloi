@@ -6,6 +6,9 @@ from ..message import Friend
 
 
 class TestEvent(MiraiEvent):
+    """
+    这是一个样例事件
+    """
     type: str = "TestEvent"
     messageChain: MessageChain
     sender: Friend
