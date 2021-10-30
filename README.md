@@ -3,11 +3,11 @@
 [![PyPI](https://img.shields.io/pypi/v/cesloi)](https://pypi.org/project/cesloi)
 [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cesloi)](https://www.python.org/)
 
-一个简易，基于 [`mirai-api-http v2`](https://github.com/project-mirai/mirai-api-http) 的 Python SDK。
+一个简易(?)，基于 [`mirai-api-http v2`](https://github.com/project-mirai/mirai-api-http) 的 Python SDK。
 
 **本项目适用于 mirai-api-http 2.0 以上版本**。
 
-目前仍处于开发阶段，内部接口可能会有较大的变化。
+项目仍处于开发阶段，部分内容可能会有较大改变
 
 注: mirai-api-http 需要启用ws adapter和http adapter
 
@@ -47,9 +47,9 @@ bot.start()
  - [`mirai-api-http`](https://github.com/project-mirai/mirai-api-http): 为本项目提供与 `mirai` 交互方式的 `mirai-console` 插件
 
 [`GraiaProject`](https://github.com/GraiaProject) 下的项目:
- - [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl): 扩展性强大, 模块间低耦合, 高灵活性的事件系统支持，是 `Cesloi` 关于参数解析与事件循环的学习对象。
- - [`Application`](https://github.com/GraiaProject/Application/): 本项目的~~解剖~~学习与参考对象。
- - [`Ariadne`](https://github.com/GraiaProject/Ariadne/): 6本项目关于网络部分的学习与参考对象。 
+ - [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl): 本项目关于参数解析与事件循环的的~~解剖~~学习对象。
+ - [`Application`](https://github.com/GraiaProject/Application/): 本项目的通用功能的~~解剖~~学习与参考对象。
+ - [`Ariadne`](https://github.com/GraiaProject/Ariadne/): 本项目关于网络部分的学习与参考对象。 
 
 
 ### 许可证
