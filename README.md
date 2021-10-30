@@ -27,9 +27,9 @@
  - [`mirai-api-http`](https://github.com/project-mirai/mirai-api-http): 为本项目提供与 `mirai` 交互方式的 `mirai-console` 插件
 
 [`GraiaProject`](https://github.com/GraiaProject) 下的项目:
- - [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl): 扩展性强大, 模块间低耦合, 高灵活性的事件系统支持，是 `Cesloi` 的参考对象。
- - [`Application`](https://github.com/GraiaProject/Application/): 本项目的学习与参考对象，支持 `mirai-api-http v1.x` 版本 。
- - [`Ariadne`](https://github.com/GraiaProject/Ariadne/): 本项目关于网络部分的学习与参考对象。 
+ - [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl): 扩展性强大, 模块间低耦合, 高灵活性的事件系统支持，是 `Cesloi` 关于参数解析与事件循环的学习对象。
+ - [`Application`](https://github.com/GraiaProject/Application/): 本项目的学习与参考对象。
+ - [`Ariadne`](https://github.com/GraiaProject/Ariadne/): 6本项目关于网络部分的学习与参考对象。 
 
 
 ### 许可证
