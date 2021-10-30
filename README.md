@@ -14,6 +14,26 @@
 ## 安装
 `pip install cesloi`
 
+## 简单的开始
+```
+from cesloi.bot_client import Cesloi
+from cesloi.message import Friend
+from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
+from cesloi.message.messageChain import MessageChain
+from cesloi.communicate_with_mah import BotSession
+
+bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=123456789, verify_key="INITKEYWylsVdbr"))
+sh = SubscriberHandler()
+
+@bot.register("FriendMessage")
+@sh.set(command_headers=['Hello', "你好"])
+async def test(app: Cesloi, friend, message: MessageChain):
+    print(message.to_text())
+    await app.send_with(friend, "Hello, World!")
+    
+bot.start()
+```
+
 ## 未来开发计划
  - CommandAnalysis， 一个抽象的命令/命令参数处理器
  - TimeScheduler， 一个根据时间选择是否执行目标函数的容器
@@ -28,7 +48,7 @@
 
 [`GraiaProject`](https://github.com/GraiaProject) 下的项目:
  - [`Broadcast Control`](https://github.com/GraiaProject/BroadcastControl): 扩展性强大, 模块间低耦合, 高灵活性的事件系统支持，是 `Cesloi` 关于参数解析与事件循环的学习对象。
- - [`Application`](https://github.com/GraiaProject/Application/): 本项目的学习与参考对象。
+ - [`Application`](https://github.com/GraiaProject/Application/): 本项目的~~解剖~~学习与参考对象。
  - [`Ariadne`](https://github.com/GraiaProject/Ariadne/): 6本项目关于网络部分的学习与参考对象。 
 
 
