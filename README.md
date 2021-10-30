@@ -19,16 +19,14 @@
 from cesloi.bot_client import Cesloi
 from cesloi.message import Friend
 from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
-from cesloi.message.messageChain import MessageChain
 from cesloi.communicate_with_mah import BotSession
 
 bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=123456789, verify_key="INITKEYWylsVdbr"))
 sh = SubscriberHandler()
 
 @bot.register("FriendMessage")
-@sh.set(command_headers=['Hello', "你好"])
-async def test(app: Cesloi, friend: Friend, message: MessageChain):
-    print(message.to_text())
+@sh.set()
+async def test(app: Cesloi, friend: Friend):
     await app.send_with(friend, "Hello, World!")
     
 bot.start()
