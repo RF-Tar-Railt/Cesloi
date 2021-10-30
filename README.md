@@ -27,7 +27,7 @@ sh = SubscriberHandler()
 
 @bot.register("FriendMessage")
 @sh.set(command_headers=['Hello', "你好"])
-async def test(app: Cesloi, friend, message: MessageChain):
+async def test(app: Cesloi, friend: Friend, message: MessageChain):
     print(message.to_text())
     await app.send_with(friend, "Hello, World!")
     
