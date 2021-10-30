@@ -1,4 +1,7 @@
 # Cesloi for mirai-api-http
+[![Licence](https://img.shields.io/github/license/RF-Tar-Railt/Cesloi)](https://github.com/RF-Tar-Railt/Cesloi/blob/master/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/cesloi)](https://pypi.org/project/cesloi)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cesloi)](https://www.python.org/)
 
 一个简易，基于 [`mirai-api-http v2`](https://github.com/project-mirai/mirai-api-http) 的 Python SDK。
 
@@ -7,6 +10,9 @@
 目前仍处于开发阶段，内部接口可能会有较大的变化。
 
 注: mirai-api-http 需要启用ws adapter和http adapter
+
+## 安装
+`pip install cesloi`
 
 ## 未来开发计划
  - CommandAnalysis， 一个抽象的命令/命令参数处理器
