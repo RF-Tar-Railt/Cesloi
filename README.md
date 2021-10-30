@@ -20,7 +20,7 @@
  - PluginManager， 不局限于在一个文件中运行方法
 
 ## 鸣谢&相关项目
-> 这些项目也很棒, 去他们的项目页看看, 点个 `Star` 以鼓励他们的开发工作, 毕竟没有他们也没有 `Ariadne`.
+> 这些项目也很棒, 去他们的项目页看看, 点个 `Star` 以鼓励他们的开发工作, 毕竟没有他们也没有 `Cesloi`.
 特别感谢 [`mamoe`](https://github.com/mamoe) 给我们带来这些精彩的项目:
  - [`mirai`](https://github.com/mamoe/mirai): 一个高性能, 高可扩展性的 QQ 协议库
  - [`mirai-console`](https://github.com/mamoe/mirai-console): 一个基于 `mirai` 开发的插件式可扩展开发平台
