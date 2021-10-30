@@ -6,6 +6,8 @@
 
 目前仍处于开发阶段，内部接口可能会有较大的变化。
 
+注: mirai-api-http 需要启用ws adapter和http adapter
+
 ## 未来开发计划
  - CommandAnalysis， 一个抽象的命令/命令参数处理器
  - TimeScheduler， 一个根据时间选择是否执行目标函数的容器
