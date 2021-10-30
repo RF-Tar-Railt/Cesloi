@@ -15,7 +15,7 @@
 `pip install cesloi`
 
 ## 简单的开始
-```
+```python
 from cesloi.bot_client import Cesloi
 from cesloi.message import Friend
 from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
