@@ -50,10 +50,8 @@ class Cesloi:
                     group_name=event.sender.group.name,
                     member_id=event.sender.id,
                     member_name=event.sender.name,
-                    member_permission=event.sender.permission.name,
                     bot_id=self.bot_session.account,
-                    bot_permission=event.sender.group.accountPerm.name,
-                    message_string=event.messageChain.to_text().__repr__(),
+                    message_string=event.messageChain.__repr__(),
                 )
             )
         )
@@ -65,7 +63,7 @@ class Cesloi:
                     bot_id=self.bot_session.account,
                     friend_name=event.sender.nickname,
                     friend_id=event.sender.id,
-                    message_string=event.messageChain.to_text().__repr__(),
+                    message_string=event.messageChain.__repr__(),
                 )
             )
         )
@@ -78,10 +76,8 @@ class Cesloi:
                     group_name=event.sender.group.name,
                     member_id=event.sender.id,
                     member_name=event.sender.name,
-                    member_permission=event.sender.permission.name,
                     bot_id=self.bot_session.account,
-                    bot_permission=event.sender.group.accountPerm.name,
-                    message_string=event.messageChain.to_text().__repr__(),
+                    message_string=event.messageChain.__repr__(),
                 )
             )
         )
