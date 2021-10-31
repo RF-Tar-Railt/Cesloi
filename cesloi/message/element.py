@@ -5,11 +5,19 @@ from typing import Dict, Optional, TYPE_CHECKING, Union
 from base64 import b64decode, b64encode
 from ..context import bot_application
 import aiohttp
-from pydantic import BaseModel, validator, Field
+from pydantic import BaseModel, validator, Field, BaseConfig, Extra
 from abc import ABC, abstractmethod
+if TYPE_CHECKING:
+    from .messageChain import MessageChain
+    from pydantic.typing import AbstractSetIntStr, MappingIntStrAny, DictStrAny
 
 
-class MessageElement(ABC, BaseModel):
+class ElementModel(BaseModel):
+    class Config(BaseConfig):
+        extra = Extra.allow
+
+
+class MessageElement(ABC, ElementModel):
     type: str
 
     def __hash__(self):
@@ -28,7 +36,7 @@ class MessageElement(ABC, BaseModel):
         return ""
 
 
-class MediaElement(ABC, BaseModel):
+class MediaElement(MessageElement):
     url: Optional[str] = None
     path: Optional[Union[Path, str]] = None
     base64: Optional[str] = None
@@ -43,6 +51,10 @@ class MediaElement(ABC, BaseModel):
                 return data
         if self.base64:
             return b64decode(self.base64)
+
+    def dict(self, *, include: Union['AbstractSetIntStr', 'MappingIntStrAny'] = None, exclude: Union['AbstractSetIntStr', 'MappingIntStrAny'] = None, by_alias: bool = False, skip_defaults: bool = None, exclude_unset: bool = False, exclude_defaults: bool = False, exclude_none: bool = False) -> 'DictStrAny':
+        return super().dict(include=include, exclude=exclude, by_alias=True, skip_defaults=skip_defaults, exclude_unset=exclude_unset, exclude_defaults=exclude_defaults, exclude_none=exclude_none)
+
 
     @staticmethod
     @abstractmethod
@@ -100,13 +112,13 @@ class Plain(MessageElement):
     type: str = "Plain"
     text: str
 
-    def __init__(self, text: str, *_, **__) -> None:
+    def __init__(self, text: str, **kwargs) -> None:
         """实例化一个 Plain 消息元素, 用于承载消息中的文字.
 
         Args:
             text (str): 元素所包含的文字
         """
-        super().__init__(text=text)
+        super().__init__(text=text, **kwargs)
 
     def to_text(self):
         return self.text
@@ -165,15 +177,6 @@ class Face(MessageElement):
     type: str = "Face"
     faceId: int
     name: Optional[str] = None
-
-    def __init__(self, faceId: int, **kwargs) -> None:
-        """实例化一个 Face 消息元素, 用于表示消息中所附带的表情.
-
-        Args:
-            faceId (int): QQ表情编号，可选，优先高于name
-            name (str,Optional): QQ表情拼音，可选
-        """
-        super().__init__(target=faceId, **kwargs)
 
     def to_text(self) -> str:
         return "[表情]"
@@ -315,23 +318,28 @@ class ImageType(Enum):
     Unknown = "Unknown"
 
 
-class Image(MessageElement, MediaElement):
+class Image(MediaElement):
     """该消息元素用于承载消息中所附带的图片."""
-    type: str = "Image"
+    type = "Image"
     imageId: Optional[str] = None
+    url: Optional[str] = None
+    path: Optional[Union[Path, str]] = None
+    base64: Optional[str] = None
 
     def __init__(
             self,
             imageId: Optional[str] = None,
             url: Optional[str] = None,
             path: Optional[Union[Path, str]] = None,
-            base64: Optional[str] = None
+            base64: Optional[str] = None,
+            **kwargs
     ):
         super().__init__(
             imageId=imageId,
             path=path,
             url=url,
-            base64=base64
+            base64=base64,
+            **kwargs
         )
 
     def to_text(self) -> str:
@@ -366,20 +374,22 @@ class Image(MessageElement, MediaElement):
 
 class FlashImage(Image):
     """该消息元素用于承载消息中所附带的图片."""
-    type: str = "FlashImage"
+    type = "FlashImage"
 
     def __init__(
             self,
             imageId: Optional[str] = None,
             url: Optional[str] = None,
             path: Optional[Union[Path, str]] = None,
-            base64: Optional[str] = None
+            base64: Optional[str] = None,
+            **kwargs
     ):
         super().__init__(
             imageId=imageId,
             path=path,
             url=url,
-            base64=base64
+            base64=base64,
+            **kwargs
         )
 
     def to_text(self) -> str:
@@ -412,7 +422,7 @@ class FlashImage(Image):
         return bot.upload_image(data, is_flash=True)
 
 
-class Voice(MessageElement, MediaElement):
+class Voice(MediaElement):
     type = "Voice"
     voiceId: Optional[str]
     length: Optional[int]
@@ -422,13 +432,15 @@ class Voice(MessageElement, MediaElement):
             voiceId: Optional[str] = None,
             url: Optional[str] = None,
             path: Optional[Union[Path, str]] = None,
-            base64: Optional[str] = None
+            base64: Optional[str] = None,
+            **kwargs
     ):
         super().__init__(
             voiceId=voiceId,
             path=path,
             url=url,
-            base64=base64
+            base64=base64,
+            **kwargs
         )
 
     def to_text(self) -> str:
@@ -482,7 +494,9 @@ class MusicShare(MessageElement):
         return MusicShare.parse_obj(json)
 
 
-if TYPE_CHECKING:
+
+
+def _update_forward_refs():
     from .messageChain import MessageChain
 
     Quote.update_forward_refs(MessageChain=MessageChain)
