@@ -1,9 +1,12 @@
 import asyncio
 import traceback
-from typing import List, Union, Type, Dict, Any
+from typing import List, Union, Type, Dict, Any, TYPE_CHECKING
 from .entities.event import TemplateEvent
 from .entities.publisher import Publisher
 from .entities.subsciber import SubscriberHandler
+
+if TYPE_CHECKING:
+    from ..event.messages import Message
 
 
 class EventDelegate:
@@ -30,7 +33,8 @@ class EventDelegate:
         coroutine = [
             self.get_coroutine_executable_target(
                 target,
-                event.get_params(target.params)  # 执行事件内的参数解析方法，获取可能的函数需要的实际参数
+                event.get_params(target.params),  # 执行事件内的参数解析方法，获取可能的函数需要的实际参数
+                message=event.messageChain if isinstance(event, Message) else ""  # 获取可能的消息链
             ) for target in publisher.subscribers
         ]
         results, _ = await asyncio.wait(coroutine)
@@ -39,12 +43,7 @@ class EventDelegate:
                 break
 
     @staticmethod
-    async def get_coroutine_executable_target(target, real_arguments):
-        message = ""
-        for i in real_arguments.values():
-            if i.__class__.__name__ == "MessageChain":
-                message = i
-                break
+    async def get_coroutine_executable_target(target, real_arguments, message):
         if SubscriberHandler.command_handler(target, message):  # subscriber的command/time处理
             try:
                 result = await target.callable_target(**real_arguments)
