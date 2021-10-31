@@ -2,7 +2,7 @@ from typing import List, Iterable, Type, Union
 
 from pydantic import BaseModel
 
-from cesloi.message.element import MessageElement, _update_forward_refs, MediaElement
+from cesloi.message.element import MessageElement, _update_forward_refs
 
 
 class MessageChain(BaseModel):
@@ -33,15 +33,6 @@ class MessageChain(BaseModel):
 
     @classmethod
     def parse_obj(cls: Type["MessageChain"], obj: List[Union[dict, MessageElement]]) -> "MessageChain":
-        """内部接口, 会自动将作为外部态的消息元素转为内部态.
-
-        Args:
-            obj (List[T]): 需要反序列化的对象
-
-        Returns:
-            MessageChain: 内部承载有尽量有效的内部态消息元素的消息链
-        """
-
         return cls(__root__=cls.build_chain(obj))  # 默认是不可变型
 
     def __init__(self, __root__: Iterable[MessageElement]):
@@ -73,22 +64,42 @@ class MessageChain(BaseModel):
         from .element import Plain
         return MessageChain([Plain(text)])
 
-    def findall(self, element_type: Union[str, MessageElement]):
+    def only_text(self) -> str:
+        """获取消息链中的纯文字部分
+        """
+        return "".join(i.to_text() if i else "" for i in self.findall("Plain"))
+
+    def findall(self, element_type: Union[str, Type[MessageElement]]) -> List[MessageElement]:
         if isinstance(element_type, str):
-            for ele in MessageElement.__subclasses__():
-                if ele.__name__ == element_type:
-                    element_type = ele
-                    break
+            element_type = MessageChain.search_element(element_type)
         return [i for i in self.__root__ if type(i) is element_type]
 
-    def find(self, element_type: Union[str, MessageElement], index: int = 0):
+    def find(self, element_type: Union[str, Type[MessageElement]], index: int = 0) -> Union[bool, MessageElement]:
+        """
+        当消息链内有指定元素时返回该元素
+        无则返回False
+        """
         ele = self.findall(element_type)
         return False if not ele else ele[index]
 
-    def append(self, element: MessageElement):
+    def has(self, element_type: Union[str, Type[MessageElement]]) -> bool:
+        """
+        当消息链内有指定元素时返回True
+        无则返回False
+        """
+        ele = self.findall(element_type)
+        return False if not ele else True
+
+    def pop(self, index: int) -> MessageElement:
+        return self.__root__.pop(index)
+
+    def index(self, element_type: Union[str, Type[MessageElement]]) -> int:
+        return self.__root__.index(self.find(element_type))
+
+    def append(self, element: MessageElement) -> None:
         self.__root__.append(element)
 
-    def extend(self, *elements: Union[MessageElement, List[MessageElement]]):
+    def extend(self, *elements: Union[MessageElement, List[MessageElement]]) -> None:
         element_list = []
         for ele in elements:
             if isinstance(ele, MessageElement):
@@ -97,7 +108,7 @@ class MessageChain(BaseModel):
                 element_list.extend(ele)
         self.__root__ += element_list
 
-    def copy_self(self):
+    def copy_self(self) -> "MessageChain":
         return MessageChain(self.__root__)
 
     def __add__(self, other) -> "MessageChain":
@@ -117,10 +128,10 @@ class MessageChain(BaseModel):
     def __iter__(self) -> Iterable[MessageElement]:
         yield from self.__root__
 
-    def __getitem__(self, index):
+    def __getitem__(self, index) -> MessageElement:
         return self.__root__[index]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.__root__)
 
     def startswith(self, string: str) -> bool:
@@ -132,3 +143,6 @@ class MessageChain(BaseModel):
         if not self.__root__:
             return False
         return self.to_text().endswith(string)
+
+
+_update_forward_refs()
