@@ -185,22 +185,16 @@ class Communicator:
     async def receive_handle(self, unknown_event_data: dict):
         received_data = unknown_event_data.get('data')
         error_check(self.logger, received_data)
-        if not self.bot_session.sessionKey:
-            if sessionKey := received_data.get("session", None):
-                self.bot_session.sessionKey = sessionKey
-            return
         event = self.delegate.parse_to_event(received_data)
         with enter_context(bot=self.bot, event_i=event):
             self.delegate.handle_event(event)
 
     async def websocket(self):
-        post_url = f"{self.bot_session.host}/all?" \
-                   f"verifyKey={self.bot_session.verifyKey}".replace("http", "ws")
-        if not self.bot_session.single_mode:
-            post_url += f"&qq={self.bot_session.account}"
         async with self.client_session.ws_connect(
-                post_url, autoping=False) as connection:
-            self.logger.debug("connecting to" + post_url)
+                str(URL(self.bot_session.host + "/all").with_query({"qq":self.bot_session.account,"verifyKey": self.bot_session.verifyKey})),
+                autoping=False,
+        ) as connection:
+            self.logger.debug("connecting to websocket")
             self.ws_connection = connection
             connected = False
             ping_count = 0
@@ -229,9 +223,8 @@ class Communicator:
                                 error_check(self.logger, data)
                             else:
                                 if not self.bot_session.sessionKey:
-                                    if sessionKey := received_data.get("session", None):
-                                        self.bot_session.sessionKey = sessionKey
-                                        connected = True
+                                    self.bot_session.sessionKey = data.get("session")
+                                    connected = True
                 elif ws_message.type is WSMsgType.CLOSE:
                     self.logger.info("websocket: server close connection.")
                     return
