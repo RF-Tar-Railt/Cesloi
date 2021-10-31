@@ -21,11 +21,11 @@ from cesloi.message import Friend
 from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
 from cesloi.communicate_with_mah import BotSession
 
-bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=123456789, verify_key="INITKEYWylsVdbr"))
+bot = Cesloi(bot_session=BotSession(host="YourHost", account="YourQQ", verify_key="YourVerifyKey"))
 sh = SubscriberHandler()
 
 @bot.register("FriendMessage")
-@sh.set()
+@sh.set(command_headers=["Hello"])
 async def test(app: Cesloi, friend: Friend):
     await app.send_with(friend, "Hello, World!")
     
