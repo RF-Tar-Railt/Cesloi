@@ -5,9 +5,6 @@ from .entities.event import TemplateEvent
 from .entities.publisher import Publisher
 from .entities.subsciber import SubscriberHandler
 
-if TYPE_CHECKING:
-    from ..event.messages import Message
-
 
 class EventDelegate:
     loop: asyncio.AbstractEventLoop
@@ -30,18 +27,20 @@ class EventDelegate:
         )
 
     async def exec_subscriber(self, publisher: Publisher, event: TemplateEvent):
-        coroutine = [
-            self.get_coroutine_executable_target(
-                target,
-                event.get_params(target.params),  # 执行事件内的参数解析方法，获取可能的函数需要的实际参数
-                message=event.messageChain if isinstance(event, Message) else ""  # 获取可能的消息链
-            ) for target in publisher.subscribers
-        ]
-        results, _ = await asyncio.wait(coroutine)
-        for result in results:
-            if result.exception() == "PropagationCancelled":
-                break
-
+        from ..event.messages import Message
+        if publisher:
+            coroutine = [
+                self.get_coroutine_executable_target(
+                    target,
+                    event.get_params(target.params),  # 执行事件内的参数解析方法，获取可能的函数需要的实际参数
+                    message=event.messageChain if isinstance(event, Message) else ""  # 获取可能的消息链
+                ) for target in publisher.subscribers
+            ]
+            results, _ = await asyncio.wait(coroutine)
+            for result in results:
+                if result.exception() == "PropagationCancelled":
+                    break
+                    
     @staticmethod
     async def get_coroutine_executable_target(target, real_arguments, message):
         if SubscriberHandler.command_handler(target, message):  # subscriber的command/time处理
