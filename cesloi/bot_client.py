@@ -175,7 +175,7 @@ class Cesloi:
             {"sessionKey": self.bot_session.sessionKey,
              "target": group if isinstance(group, int) else group.id}
         )
-        return [Group.parse_obj(i) for i in result]
+        return [Member.parse_obj(i) for i in result]
 
     async def find(
             self,
@@ -319,7 +319,7 @@ class Cesloi:
         if isinstance(message, str):
             message = MessageChain.create(message)
         with enter_message_send_context(UploadMethods.Group):
-            target_id = target.id if isinstance(target, Friend) else target
+            target_id = target.id if isinstance(target, Group) else target
             result = await self.communicator.send_handle(
                 "sendGroupMessage",
                 "POST",
@@ -362,7 +362,7 @@ class Cesloi:
             raise ValueError("Missing argument: group")
         with enter_message_send_context(UploadMethods.Temp):
             group_id = group.id if isinstance(group, Group) else group
-            target_id = target.id if isinstance(target, Friend) else target
+            target_id = target.id if isinstance(target, Member) else target
             result = await self.communicator.send_handle(
                 "sendTempMessage",
                 "POST",
@@ -406,8 +406,8 @@ class Cesloi:
         else:
             target = target
         if nudge:
-            if isinstance(target, Friend) and isinstance(target, Member):
-                await self.send_nudge(target)
+            if isinstance(target, Friend) or isinstance(target, Member):
+                return await self.send_nudge(target)
         data = {"message": messages, "target": target}
         if quote:
             data["quote"] = quote
@@ -434,6 +434,8 @@ class Cesloi:
                 "kind": "Group" if isinstance(target, Member) else "Friend"
             }
         )
+        self.logger.info(
+            f"[BOT {self.bot_session.account}] Member({target_id}) <- Nudge")
 
     async def recall_message(self, target: Union[Source, BotMessage, int]):
         """
