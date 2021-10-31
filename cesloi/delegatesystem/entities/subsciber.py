@@ -106,7 +106,7 @@ class SubscriberHandler:
     @staticmethod
     def command_handler(sub: Subscriber, msg: Union[str,MessageChain]):
         if isinstance(msg, MessageChain):
-            msg = msg.to_text()
+            msg = msg.only_text()
         cmd_part = msg.split(sub.command_separator)
         header = False
         argument = False
