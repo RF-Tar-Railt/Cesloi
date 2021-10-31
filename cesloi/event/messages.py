@@ -5,7 +5,7 @@ from cesloi.message import Friend
 from cesloi.message.group import Member
 from cesloi.message import Client
 from cesloi.message.messageChain import MessageChain
-from .inserter import ApplicationInserter
+from .inserter import ApplicationInserter, EventInserter
 
 
 class Message(MiraiEvent):
@@ -23,7 +23,8 @@ class FriendMessage(Message):
 
     def get_params(self, params):
         return ParamsAnalysis(
-            ApplicationInserter
+            ApplicationInserter,
+            EventInserter
         ).error_param_check(
             params,
             MessageChain=self.messageChain,
@@ -37,7 +38,8 @@ class GroupMessage(Message):
 
     def get_params(self, params):
         return ParamsAnalysis(
-            ApplicationInserter
+            ApplicationInserter,
+            EventInserter
         ).error_param_check(
             params,
             MessageChain=self.messageChain,
@@ -52,7 +54,8 @@ class TempMessage(Message):
 
     def get_params(self, params):
         return ParamsAnalysis(
-            ApplicationInserter
+            ApplicationInserter,
+            EventInserter
         ).error_param_check(
             params,
             MessageChain=self.messageChain,
@@ -67,7 +70,8 @@ class StrangerMessage(Message):
 
     def get_params(self, params):
         return ParamsAnalysis(
-            ApplicationInserter
+            ApplicationInserter,
+            EventInserter
         ).error_param_check(
             params,
             MessageChain=self.messageChain,
@@ -81,7 +85,8 @@ class OtherClientMessage(Message):
 
     def get_params(self, params):
         return ParamsAnalysis(
-            ApplicationInserter
+            ApplicationInserter,
+            EventInserter
         ).error_param_check(
             params,
             MessageChain=self.messageChain,
