@@ -2,11 +2,24 @@ from typing import List, Iterable, Type, Union
 
 from pydantic import BaseModel
 
-from cesloi.message.element import MessageElement
+from cesloi.message.element import MessageElement, _update_forward_refs, MediaElement
 
 
 class MessageChain(BaseModel):
     __root__: List[MessageElement]
+
+    @staticmethod
+    def element_class_generator(target=MessageElement):
+        for i in target.__subclasses__():
+            yield i
+            if i.__subclasses__():
+                yield from MessageChain.element_class_generator(i)
+
+    @staticmethod
+    def search_element(name: str):
+        for i in MessageChain.element_class_generator():
+            if i.__name__ == name:
+                return i
 
     @staticmethod
     def build_chain(obj: List[Union[dict, MessageElement]]):
@@ -15,9 +28,7 @@ class MessageChain(BaseModel):
             if isinstance(i, MessageElement):
                 elements.append(i)
             elif isinstance(i, dict) and "type" in i:
-                for ele in MessageElement.__subclasses__():
-                    if ele.__name__ == i["type"]:
-                        elements.append(ele.from_json(i))
+                elements.append(MessageChain.search_element(i["type"]).parse_obj(i))
         return elements
 
     @classmethod
