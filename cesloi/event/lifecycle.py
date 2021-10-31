@@ -5,7 +5,7 @@ if TYPE_CHECKING:
 
 
 class ApplicationRunning(TemplateEvent):
-    bot: "Cesloi"
+    bot: Any
 
     def __init__(self, bot):
         super().__init__(bot=bot)
