@@ -97,8 +97,8 @@ Album = Argument.Album.value
 Digit = Argument.Digit.value
 
 if __name__ == "__main__":
-    v = Command(headers=[""], command_list=["img", [["download", ["-p", f"{AnyStr}"]],
-                                                          ["upload", [["-u", f"{AnyStr}"], ["-f", f"{AnyStr}"]]]]])
+    v = Command(headers=[""], command_list=["img", [["download", ["-p", AnyStr]],
+                                                          ["upload", [["-u", AnyStr], ["-f", AnyStr]]]]])
     print(CommandHandle.analysis_command(v, "img upload -u http://www.baidu.com"))
     print(CommandHandle.analysis_command(v, "img upload -f img.png"))
 
