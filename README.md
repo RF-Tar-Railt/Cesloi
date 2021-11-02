@@ -33,7 +33,7 @@ bot.start()
 ```
 
 ## 未来开发计划
- - CommandAnalysis， 一个抽象的命令/命令参数处理器
+ - ~~CommandAnalysis， 一个抽象的命令/命令参数处理器~~ (已实现)
  - TimeScheduler， 一个根据时间选择是否执行目标函数的容器
  - PluginManager， 不局限于在一个文件中运行方法
 
