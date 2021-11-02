@@ -8,7 +8,9 @@ from cesloi.command import CommandHandle, Command
 
 class SubscriberInterface(BaseModel):
     callable_target: Callable
-    command: Command
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class Subscriber(SubscriberInterface):
@@ -16,13 +18,13 @@ class Subscriber(SubscriberInterface):
             self,
             callable_target: Callable,
             subscriber_name: Optional[str] = None,
-            command: Command = None,
+            command: Optional[Command] = None,
             time_schedule: Callable = None,
     ) -> None:
         super().__init__(
-            callable_target=callable_target,
-            command=command
+            callable_target=callable_target
         )
+        self.command = command
         self.subscriber_name = subscriber_name or callable_target.__name__
         self.time_schedule = time_schedule
         if not iscoroutinefunction(callable_target):
@@ -56,7 +58,7 @@ class Subscriber(SubscriberInterface):
         }
 
     subscriber_name: Optional[str]
-    command_separator: Optional[str] = '*'
+    command: Optional[Command] = None
     time_schedule: Callable = None
 
 
