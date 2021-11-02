@@ -44,13 +44,31 @@ class Subcommand:
 
 
 class Command:
-    headers: List[str]
+    """命令/命令参数解析器
+
+    样例：Command(headers=[""], main=["name","args/subcommand/subcommand_list","separate"]
+    
+    其中
+        - name: 命令名称
+        - args: 命令参数
+        - separate: 命令分隔符,分隔name与args,通常情况下为 " " (空格)
+        - subcommand: 子命令, 格式与main相同
+        - subcommand_list: 子命令集, 可传入多个子命令
+    name与args接受Command提供的三个参数: AnyStr, Album, Digit, 即name/args接受 任意字符/字母数字组合/纯数字
+    
+    您也可以用自己的写的正则表达式,前提是需要用括号括起来,如(.*?)
+    
+    Args:
+        headers: 呼叫该命令的命令头，一般是你的机器人的名字，可选
+        main: 命令主体，你的命令的主要参数解析部分，可选
+    """
+    headers: Optional[List[str]]
     main: Optional[Subcommand]
 
-    def __init__(self, headers: List[str], command_list: Optional[list] = None):
-        self.headers = headers
-        if command_list:
-            self.main = self.analysis_subcommand(command_list)
+    def __init__(self, headers: Optional[List[str]], main: Optional[list] = None):
+        self.headers = headers or [""]
+        if main:
+            self.main = self.analysis_subcommand(main)
         else:
             self.main = None
 
@@ -97,7 +115,7 @@ Album = Argument.Album.value
 Digit = Argument.Digit.value
 
 if __name__ == "__main__":
-    v = Command(headers=[""], command_list=["img", [["download", ["-p", AnyStr]],
+    v = Command(headers=[""], main=["img", [["download", ["-p", AnyStr]],
                                                           ["upload", [["-u", AnyStr], ["-f", AnyStr]]]]])
     print(CommandHandle.analysis_command(v, "img upload -u http://www.baidu.com"))
     print(CommandHandle.analysis_command(v, "img upload -f img.png"))
