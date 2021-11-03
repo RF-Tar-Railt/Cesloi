@@ -1,29 +1,31 @@
 from cesloi.bot_client import Cesloi
-from cesloi.message.group import Group, Member
+from cesloi.event.mirai import NewFriendRequestEvent
+from cesloi.model.relation import Friend
 from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
+from cesloi.message.element import Image
 from cesloi.message.messageChain import MessageChain
 from cesloi.communicate_with_mah import BotSession
-
+from cesloi.command import Command
 
 sh = SubscriberHandler()
-bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=123456789, verify_key="INITKEYWylsVdbr"))
+bot = Cesloi(bot_session=BotSession(host="http://localhost:9080", account=2582049752, verify_key="INITKEYWylsVdbr"), debug=True)
 
 
-@bot.register("GroupMessage")
-@sh.set(command_headers=['Hello', "你好"])
-async def test(app: Cesloi, group: Group, member: Member, message: MessageChain):
+@bot.register("FriendMessage")
+@sh.set(command=Command(headers=["你好", "Hello"], main=["World"]))
+async def test(app: Cesloi, friend: Friend, message: MessageChain):
     print(message.to_text())
-    await app.send_with(member, nudge=True)
-    await app.send_group_message(group, "Hello,World!")
+    await app.send_with(friend, nudge=True)
+    await app.send_friend_message(friend, "Hello,World!")
+    await app.send_with(friend, MessageChain([message.find(Image)]))
 
 
-@bot.register("MemberLeaveEventKick")
+@bot.register("NewFriendRequestEvent")
 @sh.set()
-async def test(app: Cesloi, member: Member = 'target', operator: Member = 'operator'):
-    print(member, operator)
-    await app.find(operator.id)
-    await app.get_profile()
-    await app.mute(target=operator)
+async def test1(app: Cesloi, event: NewFriendRequestEvent):
+    await event.accept()
+    await app.send_friend_message(event.fromId, MessageChain.create([Image.from_local_path("test.png")]))
 
 
 bot.start()
+
