@@ -1,9 +1,7 @@
 from typing import Union
 from .base import MiraiEvent
 from cesloi.delegatesystem.entities.event import ParamsAnalysis
-from cesloi.message import Friend
-from cesloi.message.group import Member
-from cesloi.message import Client
+from cesloi.model.relation import Client, Friend, Member
 from cesloi.message.messageChain import MessageChain
 from .inserter import ApplicationInserter, EventInserter
 
