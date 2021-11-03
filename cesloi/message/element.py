@@ -1,7 +1,7 @@
 import json as JSON
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional, TYPE_CHECKING, Union
+from typing import Dict, Optional, TYPE_CHECKING, Union, List
 from base64 import b64decode, b64encode
 from ..context import bot_application
 import aiohttp
@@ -52,10 +52,20 @@ class MediaElement(MessageElement):
         if self.base64:
             return b64decode(self.base64)
 
-    def dict(self, *, include: Union['AbstractSetIntStr', 'MappingIntStrAny'] = None, exclude: Union['AbstractSetIntStr', 'MappingIntStrAny'] = None, by_alias: bool = False, skip_defaults: bool = None, exclude_unset: bool = False, exclude_defaults: bool = False, exclude_none: bool = False) -> 'DictStrAny':
-        return super().dict(include=include, exclude=exclude, by_alias=True, skip_defaults=skip_defaults, exclude_unset=exclude_unset, exclude_defaults=exclude_defaults, exclude_none=exclude_none)
-
-
+    def dict(
+        self,
+        *,
+        include: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
+        exclude: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
+        by_alias: bool = False,
+        skip_defaults: bool = None,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+    ) -> "DictStrAny":
+        return super().dict(
+            by_alias=True
+        )
     @staticmethod
     @abstractmethod
     def from_local_path(path: Union[Path, str]):
@@ -494,9 +504,37 @@ class MusicShare(MessageElement):
         return MusicShare.parse_obj(json)
 
 
+class ForwardNode(BaseModel):
+    """表示合并转发中的一个节点"""
+    senderId: int
+    time: int
+    senderName: str
+    messageChain: Optional["MessageChain"]
+    messageId: Optional[int]
+
+
+class Forward(MessageElement):
+    """
+    指示合并转发信息
+    nodeList (List[ForwardNode]): 转发的消息节点
+    """
+
+    type = "Forward"
+    nodeList: List[ForwardNode]
+
+    def to_text(self) -> str:
+        return f"[合并转发:共{len(self.nodeList)}条]"
+
+    def to_serialization(self) -> str:
+        return f"[mirai:forward:{self.nodeList}]"
+
+    @staticmethod
+    def from_json(json: Dict):
+        return Forward.parse_obj(json)
 
 
 def _update_forward_refs():
     from .messageChain import MessageChain
 
     Quote.update_forward_refs(MessageChain=MessageChain)
+    ForwardNode.update_forward_refs(MessageChain=MessageChain)
