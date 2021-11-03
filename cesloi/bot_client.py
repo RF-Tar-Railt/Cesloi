@@ -9,10 +9,9 @@ from cesloi.event.lifecycle import ApplicationRunning
 from cesloi.event.messages import Message, GroupMessage, FriendMessage, TempMessage
 from cesloi.logger import Logger
 from cesloi.communicate_with_mah import BotSession, Communicator
-from cesloi.message import BotMessage, Profile
+from cesloi.model.utils import BotMessage, Profile, FileInfo
 from cesloi.message.element import Source, MessageElement
-from cesloi.message import Friend
-from cesloi.message.group import Group, Member, GroupConfig, MemberInfo
+from cesloi.model.relation import Group, Member, GroupConfig, MemberInfo, Friend
 from cesloi.message.messageChain import MessageChain
 
 
@@ -720,3 +719,138 @@ class Cesloi:
             return Voice.parse_obj(result)
         else:
             raise TypeError("Voice is only provides sending in group!")
+            
+        async def file_get_list(self, target: Union[Group, int], dir_id: str = "", with_download_info: bool = False,
+                            offset: Optional[int] = 0, size: Optional[int] = 1):
+        """
+        列出指定文件夹下的所有文件.
+
+        Args:
+           target (Union[Group, int]): 目标文件的群号
+           dir_id (str): 文件ID, 空串为根目录
+           with_download_info (bool): 是否携带下载信息, 无必要不要携带
+           offset (int): 分页偏移
+           size (int): 分页大小
+        Returns:
+           FileInfo: 返回的文件信息列表.
+        """
+
+        result = await self.communicator.send_handle(
+            "file/list",
+            "GET",
+            {
+                "sessionKey": self.bot_session.sessionKey,
+                "id": dir_id,
+                "target": target.id if isinstance(target, Group) else target,
+                "withDownloadInfo": str(with_download_info),
+                "offset": offset,
+                "size": size
+            },
+        )
+
+        return [FileInfo.parse_obj(i) for i in result]
+
+    async def file_get_info(self, target: Union[Group, int], dir_id: str = "", with_download_info: bool = False):
+        """
+        获取指定文件的信息.
+
+        Args:
+           target (Union[Group, int]): 目标文件的群号
+           dir_id (str): 文件ID, 空串为根目录
+           with_download_info (bool): 是否携带下载信息, 无必要不要携带
+        Returns:
+           FileInfo: 返回的文件信息.
+        """
+
+        result = await self.communicator.send_handle(
+            "file/list",
+            "GET",
+            {
+                "sessionKey": self.bot_session.sessionKey,
+                "id": dir_id,
+                "target": target.id if isinstance(target, Group) else target,
+                "withDownloadInfo": str(with_download_info)
+            },
+        )
+        return FileInfo.parse_obj(result)
+
+    async def file_make_directory(self, target: Union[Group, int], directory_name: str, dir_id: str = ""):
+        """
+        在指定位置创建新文件夹.
+
+        Args:
+            target (Union[Group, int]): 目标文件的群号
+            directory_name (str): 新建文件夹名.
+            dir_id (str): 父目录id,空串为根目录
+        Returns:
+            FileInfo: 新创建文件夹的信息.
+        """
+        result = await self.communicator.send_handle(
+            "file/list",
+            "POST",
+            {
+                "sessionKey": self.bot_session.sessionKey,
+                "id": dir_id,
+                "directoryName": directory_name,
+                "target": target.id if isinstance(target, Group) else target,
+            },
+        )
+        return FileInfo.parse_obj(result)
+
+    async def file_delete(self, target: Union[Group, int], dir_id: str = ""):
+        """
+        删除指定文件.
+
+        Args:
+           target (Union[Group, int]): 目标文件的群号
+           dir_id (str): 删除文件的id
+        """
+        await self.communicator.send_handle(
+            "file/delete",
+            "POST",
+            {
+                "sessionKey": self.bot_session.sessionKey,
+                "id": dir_id,
+                "target": target.id if isinstance(target, Group) else target,
+            },
+        )
+
+    async def file_move(self, target: Union[Group, int], move_to: str, dir_id: str = ""):
+        """
+        移动指定文件.
+
+        Args:
+           target (Union[Group, int]): 目标文件的群号
+           move_to (str): 移动目标文件夹的id
+           dir_id (str): 移动文件的id
+        """
+        await self.communicator.send_handle(
+            "file/move",
+            "POST",
+            {
+                "sessionKey": self.bot_session.sessionKey,
+                "id": dir_id,
+                "target": target.id if isinstance(target, Group) else target,
+                "moveTo": move_to
+            },
+        )
+
+    async def file_rename(self, target: Union[Group, int], rename_to: str, dir_id: str = ""):
+        """
+        重命名指定文件.
+
+        Args:
+           target (Union[Group, int]): 目标文件的群号
+           rename_to (str): 新文件名
+           dir_id (str): 重命名文件id
+        """
+        await self.communicator.send_handle(
+            "file/rename",
+            "POST",
+            {
+                "sessionKey": self.bot_session.sessionKey,
+                "id": dir_id,
+                "target": target.id if isinstance(target, Group) else target,
+                "renameTO": rename_to
+            },
+        )
