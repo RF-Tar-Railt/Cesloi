@@ -5,10 +5,9 @@ from pydantic import BaseModel, Field
 
 from .base import MiraiEvent
 from cesloi.delegatesystem.entities.event import ParamsAnalysis
-from cesloi.message.group import Member, Group, Permission
+from cesloi.model.relation import Member, Group, Permission, Friend, Client
 from .inserter import ApplicationInserter, EventInserter
 from ..context import bot_application
-from ..message import Friend, Client
 from ..message.messageChain import MessageChain
 
 
