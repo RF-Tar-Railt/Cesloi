@@ -2,7 +2,7 @@ from cesloi.event.base import MiraiEvent
 from cesloi.delegatesystem.entities.event import ParamsAnalysis
 from cesloi.message.messageChain import MessageChain
 from .inserter import ApplicationInserter, EventInserter
-from ..message import Friend
+from ..model.relation import Friend
 
 
 class TestEvent(MiraiEvent):
