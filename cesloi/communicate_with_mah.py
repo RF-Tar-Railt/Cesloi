@@ -79,7 +79,7 @@ class Communicator:
     bot_session: BotSession
     delegate: EventDelegate
     loop: asyncio.AbstractEventLoop
-    logger: Logger
+    logger: Logger.logger
 
     def __init__(
             self,
@@ -91,7 +91,7 @@ class Communicator:
         self.bot_session = bot_session
         self.delegate = delegate
         self.loop = delegate.loop
-        self.logger = logger or Logger()
+        self.logger = logger or Logger().logger
         self.bot = bot
         self.running_task: Optional[Task] = None
         self.running: bool = False
@@ -117,7 +117,7 @@ class Communicator:
         sync_id = str(random.randint(0, 100_000_000))
         content = {
             'syncId': sync_id,
-            'command': command_name,
+            'main': command_name,
             'content': json.dumps(data)
         }
         if subcommand:
@@ -178,7 +178,7 @@ class Communicator:
                     self.delegate.handle_event(event)
             else:
                 if sync_id not in self.wait_response_future:
-                    self.logger.warn(f"syncId {sync_id} not found!")
+                    self.logger.warning(f"syncId {sync_id} not found!")
                 else:
                     self.wait_response_future.pop(sync_id).set_result(data)
 
@@ -190,6 +190,10 @@ class Communicator:
             self.delegate.handle_event(event)
 
     async def websocket(self):
+        """post_url = f"{self.bot_session.host}/all?" \
+                   f"verifyKey={self.bot_session.verifyKey}".replace("http", "ws")
+        if not self.bot_session.single_mode:
+            post_url += f"&qq={self.bot_session.account}\""""
         async with self.client_session.ws_connect(
                 str(URL(self.bot_session.host + "/all").with_query({"qq":self.bot_session.account,"verifyKey": self.bot_session.verifyKey})),
                 autoping=False,
@@ -203,7 +207,7 @@ class Communicator:
                     ws_message = await connection.receive()
                 except asyncio.TimeoutError:
                     if ping_count > 5:
-                        self.logger.warn("websocket: timeout,stop")
+                        self.logger.warning("websocket: timeout,stop")
                         await self.stop()
                     else:
                         await self.ws_connection.ping()
@@ -221,6 +225,7 @@ class Communicator:
                             data = received_data['data']
                             if data['code']:
                                 error_check(self.logger, data)
+
                             else:
                                 if not self.bot_session.sessionKey:
                                     self.bot_session.sessionKey = data.get("session")
@@ -234,9 +239,9 @@ class Communicator:
                 elif ws_message.type is WSMsgType.PONG:
                     self.logger.debug("websocket: received pong from remote")
                 elif ws_message.type == WSMsgType.ERROR:
-                    self.logger.warn("websocket: connection error: " + ws_message.data)
+                    self.logger.warning("websocket: connection error: " + ws_message.data)
                 else:
-                    self.logger.warn(f"detected a unknown message type: {ws_message.type}")
+                    self.logger.warning(f"detected a unknown message type: {ws_message.type}")
         self.logger.info("connection disconnected")
 
     async def connect(self):
