@@ -34,6 +34,7 @@ async def test(app: Cesloi, friend: Friend):
 bot.start()
 ```
 ### 使用插件的版本
+In `main.py` :
 ```python
 from cesloi.bot_client import Cesloi
 from cesloi.communicate_with_mah import BotSession
@@ -42,6 +43,21 @@ from cesloi.communicate_with_mah import BotSession
 bot = Cesloi(bot_session=BotSession(host="http://localhost:9080", account=2582049752, verify_key="INITKEYWylsVdbr"))
 bot.install_plugins("test_plugins")
 bot.start()
+```
+In `test_plugins/example_plugin.py` :
+```python
+from cesloi.bot_client import Cesloi
+from cesloi.model.relation import Friend
+from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
+from cesloi.command import Command
+from cesloi.plugin import Bellidin as bd
+
+sh = SubscriberHandler()
+
+@bd.register("FriendMessage")
+@sh.set(command=Command(["Hello"]))
+async def test(app: Cesloi, friend: Friend):
+    await app.send_with(friend, "Hello, World!")
 ```
 
 ## 未来开发计划
