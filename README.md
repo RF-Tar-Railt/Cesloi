@@ -15,6 +15,7 @@
 `pip install cesloi`
 
 ## 简单的开始
+### 通常版本
 ```python
 from cesloi.bot_client import Cesloi
 from cesloi.model.relation import Friend
@@ -32,11 +33,21 @@ async def test(app: Cesloi, friend: Friend):
     
 bot.start()
 ```
+### 使用插件的版本
+```python
+from cesloi.bot_client import Cesloi
+from cesloi.communicate_with_mah import BotSession
+
+
+bot = Cesloi(bot_session=BotSession(host="http://localhost:9080", account=2582049752, verify_key="INITKEYWylsVdbr"))
+bot.install_plugins("test_plugins")
+bot.start()
+```
 
 ## 未来开发计划
  - ~~CommandAnalysis， 一个抽象的命令/命令参数处理器~~ (已实现)
  - TimeScheduler， 一个根据时间选择是否执行目标函数的容器
- - PluginManager， 不局限于在一个文件中运行方法
+ - ~~PluginManager， 不局限于在一个文件中运行方法~~ (已实现)
 
 ## 鸣谢&相关项目
 > 这些项目也很棒, 去他们的项目页看看, 点个 `Star` 以鼓励他们的开发工作, 毕竟没有他们也没有 `Cesloi`.
