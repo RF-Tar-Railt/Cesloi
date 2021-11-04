@@ -13,6 +13,7 @@ from cesloi.model.utils import BotMessage, Profile, FileInfo
 from cesloi.message.element import Source, MessageElement
 from cesloi.model.relation import Group, Member, GroupConfig, MemberInfo, Friend
 from cesloi.message.messageChain import MessageChain
+from cesloi.plugin import Bellidin
 
 
 class Cesloi:
@@ -20,21 +21,25 @@ class Cesloi:
             self,
             *,
             bot_session: BotSession,
+            delegate: Optional[EventDelegate] = None,
             logger: Optional[Logger] = None,
             debug: bool = False,
             enable_chat_log: bool = True,
     ):
-        self.delegate: EventDelegate = EventDelegate()
+        self.delegate: EventDelegate = delegate or EventDelegate()
         self.bot_session: BotSession = bot_session
         self.debug = debug
-        self.logger = logger or Logger(level='debug' if debug else 'info')
+        self.logger = logger or Logger(level='DEBUG' if debug else 'INFO').logger
+        self.bellidin = Bellidin.set_bellidin(self.delegate,self.logger)
         self.chat_log_enabled = enable_chat_log
         self.communicator = Communicator(bot_session, bot=self, delegate=self.delegate, logger=self.logger)
         self.running: bool = False
         self.daemon_task: Optional[Task] = None
-        self.group_message_log_format: str = "{bot_id}: [{group_name}({group_id})] {member_name}({member_id}) -> {message_string}"
+        self.group_message_log_format: str = "{bot_id}: [{group_name}({group_id})] {member_name}({member_id}) -> {" \
+                                             "message_string} "
         self.friend_message_log_format: str = "{bot_id}: [{friend_name}({friend_id})] -> {message_string}"
-        self.temp_message_log_format: str = "{bot_id}: [{group_name}({group_id}.{member_name}({member_id})] -> {message_string}"
+        self.temp_message_log_format: str = "{bot_id}: [{group_name}({group_id}.{member_name}({member_id})] -> {" \
+                                            "message_string} "
 
         if self.chat_log_enabled:
             self.delegate.register("GroupMessage")(SubscriberHandler().set()(self.logger_group_message))
@@ -90,9 +95,9 @@ class Cesloi:
                     if self.communicator.running_task:
                         await self.communicator.running_task
                 except Exception as e:
-                    self.logger.warn(e)
+                    self.logger.warning(e)
                 await self.communicator.stop()
-                self.logger.warn("Communicator stopped")
+                self.logger.warning("Communicator stopped")
                 await asyncio.sleep(retry_interval)
                 self.logger.info("Cesloi Network Restarting...")
             except asyncio.CancelledError:
@@ -102,6 +107,7 @@ class Cesloi:
     async def close(self):
         if self.running:
             self.running = False
+            self.uninstall_plugins()
             if self.daemon_task:
                 self.daemon_task.cancel()
                 self.daemon_task = None
@@ -130,7 +136,7 @@ class Cesloi:
             if self.daemon_task:
                 loop.run_until_complete(self.daemon_task)
         except KeyboardInterrupt or asyncio.CancelledError:
-            self.logger.warn("Interrupt detected, bot stopping ...")
+            self.logger.warning("Interrupt detected, bot stopping ...")
         loop.run_until_complete(self.close())
 
     def register(self, *args, **kwargs):
@@ -138,6 +144,24 @@ class Cesloi:
         注册事件方法，用于指定订阅器订阅的发布器绑定的事件。
         """
         return self.delegate.register(*args, **kwargs)
+
+    def install_plugins(self, plugins_dir: str):
+        """
+        导入插件方法，必须传入一个目录，目录内有你的.py文件或模块
+        """
+        return self.bellidin.install_plugins(plugins_dir)
+
+    def uninstall_plugins(self):
+        """
+        卸载导入的插件的方法.
+        """
+        return self.bellidin.uninstall_plugins()
+
+    def reload_plugins(self, new_plugins_dir: Optional[str] = None):
+        """
+        重载插件方法，可选传入一个新目录，目录内有你的.py文件或模块
+        """
+        return self.bellidin.reload_plugins(new_plugins_dir)
 
     async def get_mah_version(self):
         result = await self.communicator.send_handle("about", "GET")
@@ -670,7 +694,7 @@ class Cesloi:
             }
         )
 
-    async def modify_admin(self, is_admin: bool, member: Union[Member, int], group: Optional[Union[Group, int]] = None ):
+    async def modify_admin(self, is_admin: bool, member: Union[Member, int], group: Optional[Union[Group, int]] = None):
         if not group and isinstance(member, int):
             raise ValueError("You must give a Member when there isn't Group")
         if isinstance(member, Member) and not group:
@@ -689,7 +713,7 @@ class Cesloi:
     async def upload_image(self, data: bytes, may_method: Optional[str] = None, is_flash: bool = False):
         from .message.element import Image
         from .message.element import FlashImage
-        method = may_method or upload_method.get()
+        method = may_method or upload_method.get().value
         result = await self.communicator.send_handle(
             "uploadIamge",
             "MULIPART",
@@ -705,7 +729,7 @@ class Cesloi:
 
     async def upload_voice(self, data: bytes, may_method: Optional[str] = None):
         from .message.element import Voice
-        method = may_method or upload_method.get()
+        method = may_method or upload_method.get().value
         if method == "group":
             result = await self.communicator.send_handle(
                 "uploadVoice",
@@ -719,8 +743,27 @@ class Cesloi:
             return Voice.parse_obj(result)
         else:
             raise TypeError("Voice is only provides sending in group!")
-            
-        async def file_get_list(self, target: Union[Group, int], dir_id: str = "", with_download_info: bool = False,
+
+    async def upload_file(self, data: bytes, target: Union[Group, int], may_method: Optional[str] = None,
+                          path: str = "", ):
+        method = may_method or upload_method.get().value
+        if method == "group":
+            result = await self.communicator.send_handle(
+                "file/upload",
+                "MULTIPART",
+                {
+                    "sessionKey": self.bot_session.sessionKey,
+                    "type": method.value,
+                    "target": target if isinstance(target, int) else target.id,
+                    "path": path,
+                    "file": data,
+                },
+            )
+            return FileInfo.parse_obj(result)
+        else:
+            raise TypeError("File is only provides sending in group!")
+
+    async def file_get_list(self, target: Union[Group, int], dir_id: str = "", with_download_info: bool = False,
                             offset: Optional[int] = 0, size: Optional[int] = 1):
         """
         列出指定文件夹下的所有文件.
