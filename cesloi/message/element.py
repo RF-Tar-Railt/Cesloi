@@ -7,12 +7,30 @@ from ..context import bot_application
 import aiohttp
 from pydantic import BaseModel, validator, Field, BaseConfig, Extra
 from abc import ABC, abstractmethod
+
 if TYPE_CHECKING:
     from .messageChain import MessageChain
     from pydantic.typing import AbstractSetIntStr, MappingIntStrAny, DictStrAny
 
 
 class ElementModel(BaseModel):
+
+    def dict(
+            self,
+            *,
+            include: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
+            exclude: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
+            by_alias: bool = False,
+            skip_defaults: bool = None,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+    ) -> "DictStrAny":
+        return super().dict(
+            by_alias=True,
+            exclude_none=True
+        )
+
     class Config(BaseConfig):
         extra = Extra.allow
 
@@ -52,20 +70,6 @@ class MediaElement(MessageElement):
         if self.base64:
             return b64decode(self.base64)
 
-    def dict(
-        self,
-        *,
-        include: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
-        exclude: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
-        by_alias: bool = False,
-        skip_defaults: bool = None,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False,
-    ) -> "DictStrAny":
-        return super().dict(
-            by_alias=True
-        )
     @staticmethod
     @abstractmethod
     def from_local_path(path: Union[Path, str]):
