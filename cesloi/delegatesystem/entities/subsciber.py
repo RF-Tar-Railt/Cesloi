@@ -19,6 +19,8 @@ class Subscriber(SubscriberInterface):
             callable_target: Callable,
             subscriber_name: Optional[str] = None,
             command: Optional[Command] = None,
+            require_param_name: str = None,
+            is_replace_message: bool = True,
             time_schedule: Callable = None,
     ) -> None:
         super().__init__(
@@ -27,6 +29,8 @@ class Subscriber(SubscriberInterface):
         self.command = command
         self.subscriber_name = subscriber_name or callable_target.__name__
         self.time_schedule = time_schedule
+        self.require_param_name = require_param_name
+        self.is_replace_message = is_replace_message
         if not iscoroutinefunction(callable_target):
             raise TypeError("Your Function must be a coroutine function (use async)!")
 
@@ -60,6 +64,8 @@ class Subscriber(SubscriberInterface):
     subscriber_name: Optional[str]
     command: Optional[Command] = None
     time_schedule: Callable = None
+    require_param_name: str = None
+    is_replace_message: bool = True
 
 
 class SubscriberHandler:
@@ -71,7 +77,9 @@ class SubscriberHandler:
     def set(
         self,
         subscriber_name: Optional[str] = None,
-        command: Command = None
+        command: Command = None,
+        require_param_name: str = None,
+        is_replace_message: bool = True
         # time_schedule: Callable = None,
     ):
         """该方法生成一个订阅器实例，该订阅器负责调控装饰的可执行函数
@@ -83,12 +91,17 @@ class SubscriberHandler:
         Args:
             subscriber_name :装饰器名字，可选
             command :命令处理器，可选
+            require_param_name :若命令处理器成功匹配文本并且非完全匹配模式(不含正则表达式)，则根据订阅器下的函数的参数中关于消息链参数的参数名判断是否将匹配到的文本通过该参数传递。
+            is_replace_message : 此参数决定是否把匹配的文本传给消息链，默认为True
+
         """
         def wrapper(func):
             self.subscriber = Subscriber(
                 func,
                 subscriber_name,
-                command
+                command,
+                require_param_name,
+                is_replace_message
                 # time_schedule
             )
             return self.subscriber
@@ -100,7 +113,29 @@ class SubscriberHandler:
         if isinstance(msg, MessageChain):
             msg = msg.only_text()
         if not sub.command:
-            return True, None
+            return True, -1
         result = CommandHandle.analysis_command(sub.command, msg)
         if result:
             return True, result
+
+    @staticmethod
+    def params_handler(sub: Subscriber, arg: dict, match_msg: str, msg: MessageChain):
+        if sub.is_replace_message and match_msg != -1 and not isinstance(match_msg, bool):
+            if sub.require_param_name:
+                if isinstance(match_msg, str):
+                    arg[sub.require_param_name] = MessageChain([msg.find("Source")]) + \
+                                                  MessageChain.from_text(match_msg)
+                if isinstance(match_msg, tuple):
+                    arg[sub.require_param_name] = MessageChain([msg.find("Source")]) + \
+                                                  MessageChain.from_text(",".join(match_msg))
+            else:
+                for k, v in arg.items():
+                    if v.__class__.__name__ == "MessageChain":
+                        if isinstance(match_msg, str):
+                            arg[k] = MessageChain([msg.find("Source")]) + \
+                                     MessageChain.from_text(match_msg)
+                        if isinstance(match_msg, tuple):
+                            arg[k] = MessageChain([msg.find("Source")]) + \
+                                     MessageChain.from_text(",".join(match_msg))
+
+        return arg
