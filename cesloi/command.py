@@ -26,18 +26,22 @@ class Subcommand:
         if isinstance(self.args, str):
             return [self.name + self.separate + self.args]
         elif isinstance(self.args, Subcommand):
+            if self.name.rstrip(' ') == "":
+                return [self.name + self.separate + sub for sub in self.args.analysis_content()]
             return [self.name] + [self.name + self.separate + sub for sub in self.args.analysis_content()]
         elif isinstance(self.args, list):
             result = []
             for sub in self.args:
                 result.extend(sub.analysis_content())
+            if self.name.rstrip(' ') == "":
+                return [self.name + self.separate + sub for sub in result]
             return [self.name] + [self.name + self.separate + sub for sub in result]
 
 
 class Command:
     """命令/命令参数解析器
 
-    样例：Command(headers=[""], main=["name","args/subcommand/subcommand_list","separate"]
+    样例：Command(headers=[""], main=["name","args/subcommand/subcommand_list","separate"])
 
     其中
         - name: 命令名称, 必写
@@ -120,10 +124,13 @@ if __name__ == "__main__":
     print(CommandHandle.analysis_command(v, "img upload -u http://www.baidu.com"))  # http://www.baidu.com
     print(CommandHandle.analysis_command(v, "img upload -f img.png"))  # img.png
 
-    v = Command(headers=["bot"], main=["get"])
-    print(CommandHandle.analysis_command(v, "bot get"))  # True
-    v = Command(headers=["bot"], main=["get","config"])
-    print(CommandHandle.analysis_command(v, "bot get config"))  # True
+    v = Command(headers=['bot', 'cmd.'], main=["", [["签到"], ["sign in"]], ""])
+    print(CommandHandle.analysis_command(v, "cmd.sign in"))  # True
+
     v = Command(headers=["bots", "bot"])
     print(CommandHandle.analysis_command(v, "bot"))  # True
-    print(CommandHandle.analysis_command(v, "sbot"))  # False
+    print(CommandHandle.analysis_command(v, "bots aaa"))  # False
+
+    v = Command(headers=["bots", "bot"], main=[AnyStr])
+    print(CommandHandle.analysis_command(v, "bot"))  # False
+    print(CommandHandle.analysis_command(v, "bots aaa"))  # True
