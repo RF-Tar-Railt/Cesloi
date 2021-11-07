@@ -3,7 +3,7 @@ from typing import Callable, Optional, Union
 from pydantic import BaseModel
 from inspect import iscoroutinefunction
 from cesloi.message.messageChain import MessageChain
-from cesloi.command import CommandHandle, Command
+from cesloi.command import Command
 
 
 class SubscriberInterface(BaseModel):
@@ -114,28 +114,25 @@ class SubscriberHandler:
             msg = msg.only_text()
         if not sub.command:
             return True, -1
-        result = CommandHandle.analysis_command(sub.command, msg)
+        result = sub.command.analysis(msg)
         if result:
             return True, result
 
     @staticmethod
     def params_handler(sub: Subscriber, arg: dict, match_msg: str, msg: MessageChain):
+        from ...message.element import Plain
         if sub.is_replace_message and match_msg != -1 and not isinstance(match_msg, bool):
             if sub.require_param_name:
                 if isinstance(match_msg, str):
-                    arg[sub.require_param_name] = MessageChain([msg.find("Source")]) + \
-                                                  MessageChain.from_text(match_msg)
+                    arg[sub.require_param_name] = msg.replace(Plain, Plain(match_msg), 1)
                 if isinstance(match_msg, tuple):
-                    arg[sub.require_param_name] = MessageChain([msg.find("Source")]) + \
-                                                  MessageChain.from_text(",".join(match_msg))
+                    arg[sub.require_param_name] = msg.replace(Plain, Plain(",".join(match_msg)), 1)
             else:
                 for k, v in arg.items():
                     if v.__class__.__name__ == "MessageChain":
                         if isinstance(match_msg, str):
-                            arg[k] = MessageChain([msg.find("Source")]) + \
-                                     MessageChain.from_text(match_msg)
+                            arg[k] = msg.replace(Plain, Plain(match_msg), 1)
                         if isinstance(match_msg, tuple):
-                            arg[k] = MessageChain([msg.find("Source")]) + \
-                                     MessageChain.from_text(",".join(match_msg))
+                            arg[k] = msg.replace(Plain, Plain(",".join(match_msg)), 1)
 
         return arg
