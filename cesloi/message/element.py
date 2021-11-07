@@ -1,9 +1,10 @@
 import json as JSON
+from xml import sax
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional, TYPE_CHECKING, Union, List
 from base64 import b64decode, b64encode
-from ..context import bot_application
+from ..utils import bot_application
 import aiohttp
 from pydantic import BaseModel, validator, Field, BaseConfig, Extra
 from abc import ABC, abstractmethod
@@ -28,6 +29,7 @@ class ElementModel(BaseModel):
     ) -> "DictStrAny":
         return super().dict(
             by_alias=True,
+            exclude=exclude,
             exclude_none=True
         )
 
@@ -41,12 +43,10 @@ class MessageElement(ABC, ElementModel):
     def __hash__(self):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
-    @abstractmethod
     def to_serialization(self) -> str:
-        """将元素转为可序列化的字符串"""
+        return f"[mirai:{self.type}:{JSON.dumps(self.dict(exclude={'type'}))}]"
 
     @staticmethod
-    @abstractmethod
     def from_json(json: Dict):
         """将json转换为元素"""
 
@@ -92,9 +92,6 @@ class Source(MessageElement):
     id: int
     time: int
 
-    def to_serialization(self) -> str:
-        return f"[mirai:source:{self.id},{self.time}]"
-
     @staticmethod
     def from_json(json: Dict) -> "Source":
         return Source.parse_obj(json)
@@ -115,7 +112,7 @@ class Quote(MessageElement):
         return MessageChain(v)
 
     def to_serialization(self) -> str:
-        return f" [mirai:quote:{self.id}]"
+        return f"[mirai:Quote:{{\"id\":{self.id},\"origin\":{self.origin}}}]"
 
     @staticmethod
     def from_json(json: Dict) -> "Quote":
@@ -161,10 +158,7 @@ class At(MessageElement):
         super().__init__(target=target, **kwargs)
 
     def to_text(self) -> str:
-        return str(self.display) if self.display else f"@{self.target}"
-
-    def to_serialization(self) -> str:
-        return f"[mirai:at:{self.target},{self.display}]"
+        return f'[@{str(self.display)} ]' if self.display else f"[@{self.target} ]"
 
     @staticmethod
     def from_json(json: Dict) -> "At":
@@ -176,10 +170,7 @@ class AtAll(MessageElement):
     type: str = "AtAll"
 
     def to_text(self) -> str:
-        return "@全体成员"
-
-    def to_serialization(self) -> str:
-        return "[mirai:atall]"
+        return "[@全体成员 ]"
 
     @staticmethod
     def from_json(json: Dict):
@@ -193,10 +184,7 @@ class Face(MessageElement):
     name: Optional[str] = None
 
     def to_text(self) -> str:
-        return "[表情]"
-
-    def to_serialization(self) -> str:
-        return f"[mirai:face:{self.faceId}]"
+        return f"[表情:{self.name}]" if self.name else f"[表情:{self.faceId}]"
 
     @staticmethod
     def from_json(json: Dict) -> "Face":
@@ -213,8 +201,8 @@ class Xml(MessageElement):
     def to_text(self) -> str:
         return "[XML消息]"
 
-    def to_serialization(self) -> str:
-        return f"[mirai:xml:{self.xml}]"
+    def get_xml(self):
+        return sax.parseString(self.xml, sax.handler.ContentHandler())
 
     @staticmethod
     def from_json(json: Dict):
@@ -230,14 +218,11 @@ class Json(MessageElement):
             json = JSON.dumps(json)
         super().__init__(json=json, **kwargs)
 
-    def dict(self, *args, **kwargs):
-        return super().dict(*args, **({**kwargs, "by_alias": True}))
-
     def to_text(self) -> str:
         return "[JSON消息]"
 
-    def to_serialization(self) -> str:
-        return f"[mirai:json:{self.Json}]"
+    def get_json(self) -> dict:
+        return JSON.loads(self.Json)
 
     @staticmethod
     def from_json(json: Dict):
@@ -249,10 +234,10 @@ class App(MessageElement):
     content: str
 
     def to_text(self) -> str:
-        return "[APP消息]"
+        return f"[APP消息:{JSON.loads(self.content)['prompt']}]"
 
-    def to_serialization(self) -> str:
-        return f"[mirai:app:{self.content}]"
+    def get_meta_content(self) -> dict:
+        return JSON.loads(self.content)['meta']
 
     @staticmethod
     def from_json(json: Dict):
@@ -285,9 +270,6 @@ class Poke(MessageElement):
     def to_text(self) -> str:
         return f"[戳一戳:{self.name}]"
 
-    def to_serialization(self) -> str:
-        return f"[mirai:poke:{self.name}]"
-
     @staticmethod
     def from_json(json: Dict):
         return Poke.parse_obj(json)
@@ -299,9 +281,6 @@ class Dice(MessageElement):
 
     def to_text(self) -> str:
         return f"[骰子:{self.value}]"
-
-    def to_serialization(self) -> str:
-        return f"[mirai:dice:{self.value}]"
 
     @staticmethod
     def from_json(json: Dict):
@@ -316,9 +295,6 @@ class File(MessageElement):
 
     def to_text(self) -> str:
         return f'[文件:{self.name}]'
-
-    def to_serialization(self) -> str:
-        return f'[mirai:file:{self.name}]'
 
     @staticmethod
     def from_json(json: Dict):
@@ -500,9 +476,6 @@ class MusicShare(MessageElement):
     def to_text(self) -> str:
         return f"[音乐分享:{self.title}]"
 
-    def to_serialization(self) -> str:
-        return f"[mirai:musicshare:{self.title}]"
-
     @staticmethod
     def from_json(json: Dict):
         return MusicShare.parse_obj(json)
@@ -520,6 +493,7 @@ class ForwardNode(BaseModel):
 class Forward(MessageElement):
     """
     指示合并转发信息
+
     nodeList (List[ForwardNode]): 转发的消息节点
     """
 
@@ -528,9 +502,6 @@ class Forward(MessageElement):
 
     def to_text(self) -> str:
         return f"[合并转发:共{len(self.nodeList)}条]"
-
-    def to_serialization(self) -> str:
-        return f"[mirai:forward:{self.nodeList}]"
 
     @staticmethod
     def from_json(json: Dict):
