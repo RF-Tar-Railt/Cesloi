@@ -48,14 +48,14 @@ In `test_plugins/example_plugin.py` :
 ```python
 from cesloi.bot_client import Cesloi
 from cesloi.model.relation import Friend
-from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
 from cesloi.command import Command
-from cesloi.plugin import Bellidin as bd
+from cesloi.plugin import Bellidin as bd, CommandHandler
 
-sh = SubscriberHandler()
 
-@bd.register("FriendMessage")
-@sh.set(command=Command(["Hello"]))
+@bd.model_register(
+    "FriendMessage",
+    match_command=CommandHandler(command=Command(headers=["你好", "Hello"], main=["World"]))
+)
 async def test(app: Cesloi, friend: Friend):
     await app.send_with(friend, "Hello, World!")
 ```
