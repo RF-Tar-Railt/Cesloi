@@ -60,14 +60,16 @@ class Command:
     headers: Optional[List[str]]
     main: Optional[Subcommand]
 
-    def __init__(self, headers: Optional[List[str]], main: Optional[list] = None):
+    def __init__(self, headers: Optional[List[str]] = None, main: Optional[list] = None):
+        if not headers and not main:
+            raise ValueError("Must choose one parameter!")
         self.headers = headers or [""]
         if main:
-            self.main = self.analysis_subcommand(main)
+            self.main = self.to_subcommand(main)
         else:
             self.main = None
 
-    def analysis_subcommand(self, cl):
+    def to_subcommand(self, cl):
         if not cl:
             raise ValueError("Must input name!")
         name = cl[0]
@@ -75,33 +77,29 @@ class Command:
             args = cl[1]
             if isinstance(args, list):
                 if isinstance(args[0], str):
-                    args = self.analysis_subcommand(args)
+                    args = self.to_subcommand(args)
                 else:
                     args = []
                     for sub in cl[1]:
-                        args.append(self.analysis_subcommand(sub))
+                        args.append(self.to_subcommand(sub))
             if len(cl) > 2:
                 sep = cl[2]
                 return Subcommand(name, args, separate=sep)
             return Subcommand(name, args)
         return Subcommand(name)
 
-
-class CommandHandle:
-
-    @classmethod
-    def analysis_command(cls, command: Command, cmd: str) -> Union[str, Tuple[str], bool]:
+    def analysis(self, cmd: str) -> Union[str, Tuple[str], bool]:
         cmd = cmd.rstrip(' ')
-        for head in command.headers:
+        for head in self.headers:
             if head != "" and head in cmd:
                 cmd = cmd.replace(head, "", 1)
                 break
         cmd = cmd.lstrip(' ')
-        if not command.main:
+        if not self.main:
             if cmd == "":
                 return True
             return False
-        for pat in command.main.analysis_content():
+        for pat in self.main.analysis_content():
             pattern = re.compile('^' + pat + '$')
             result = pattern.findall(cmd)
             if result:
@@ -119,18 +117,27 @@ if __name__ == "__main__":
     """
     演示程序
     """
-    v = Command(headers=[""], main=["img", [["download", ["-p", AnyStr]],
-                                                          ["upload", [["-u", AnyStr], ["-f", AnyStr]]]]])
-    print(CommandHandle.analysis_command(v, "img upload -u http://www.baidu.com"))  # http://www.baidu.com
-    print(CommandHandle.analysis_command(v, "img upload -f img.png"))  # img.png
+    v = Command(main=["img", [["download", ["-p", AnyStr]],
+                              ["upload", [["-u", AnyStr], ["-f", AnyStr]]]]])
+    print(v.analysis("img upload -u http://www.baidu.com"))  # http://www.baidu.com
+    print(v.analysis("img upload -f img.png"))  # img.png
 
     v = Command(headers=['bot', 'cmd.'], main=["", [["签到"], ["sign in"]], ""])
-    print(CommandHandle.analysis_command(v, "cmd.sign in"))  # True
+    print(v.analysis("cmd.sign in"))  # True
 
     v = Command(headers=["bots", "bot"])
-    print(CommandHandle.analysis_command(v, "bot"))  # True
-    print(CommandHandle.analysis_command(v, "bots aaa"))  # False
+    print(v.analysis("bot"))  # True
+    print(v.analysis("bots aaa"))  # False
 
     v = Command(headers=["bots", "bot"], main=[AnyStr])
-    print(CommandHandle.analysis_command(v, "bot"))  # False
-    print(CommandHandle.analysis_command(v, "bots aaa"))  # True
+    print(v.analysis("bot"))  # False
+    print(v.analysis("bots aaa"))  # True
+
+    v = Command(main=[".command", ["--option", "foo"]])
+    print(v.analysis(".command --option foo"))  # True
+    print(v.analysis(".command "))
+
+    v = Command(main=[r"/ping (\d+)\.(\d+)\.(\d+)\.(\d+)[|:]?(\d+)?", [["-t", Digit], ["-a"]]])
+    print(v.analysis("/ping 127.0.0.1 -t 10"))
+    print(v.analysis("/ping 127.0.0.1"))
+    print(v.analysis("/ping 127.0.0.1 -a"))
