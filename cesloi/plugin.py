@@ -1,12 +1,37 @@
 import os
 from types import ModuleType
-from typing import Optional, Dict, Union, Type
+from typing import Optional, Dict, Union, Type, Callable
 import importlib
+
+from pydantic import BaseModel
+
 from .delegatesystem import EventDelegate, TemplateEvent, Publisher
 from .logger import Logger
+from .command import Command
 
 
 _module_target_dict: Dict[str, list] = {}
+
+
+class CommandHandler(BaseModel):
+    command: Command
+    require_param_name: str = None,
+    is_replace_message: bool = True
+
+    def __init__(
+            self,
+            command: Command,
+            require_param_name: Optional[str] = None,
+            is_replace_message: bool = True
+    ):
+        super().__init__(
+            command=command,
+            is_replace_message=is_replace_message
+        )
+        self.require_param_name = require_param_name
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class TemplatePlugin:
@@ -38,32 +63,38 @@ class Bellidin:
     plugins_dir: str
 
     @classmethod
-    def register(cls, event: Union[str, Type[TemplateEvent]]):
-        if cls.delegate:
-            if isinstance(event, str):
-                name = event
-                event = cls.delegate.search_event(event)
-                if not event:
-                    raise Exception(name + " cannot found!")
-
-            def register_wrapper(subscriber):
-                temp_publisher = cls.delegate.search_publisher(event)
-                if not temp_publisher:
-                    cls.delegate.publisher_list.append(Publisher(subscriber, bind_event=event))
-                else:
-                    if subscriber.name not in temp_publisher.subscribers_names():
-                        temp_publisher.subscribers.append(subscriber)
-                    else:
-                        raise ValueError(f"Function \"{subscriber.name}\" for {event.__name__} has already registered!")
-                if cls.current_module_name not in _module_target_dict:
-                    _module_target_dict[cls.current_module_name] = [[event, subscriber]]
-                else:
-                    _module_target_dict[cls.current_module_name].append([event, subscriber])
-                return subscriber
-
-            return register_wrapper
-        else:
+    def model_register(
+            cls,
+            event: Union[str, Type[TemplateEvent]],
+            *,
+            match_command: Optional[CommandHandler] = None
+    ):
+        if not cls.delegate:
             raise RuntimeError("Delegate didn't existed!")
+        if isinstance(event, str):
+            name = event
+            event = cls.delegate.search_event(event)
+            if not event:
+                raise Exception(name + " cannot found!")
+
+        def register_wrapper(func: Callable):
+            from .delegatesystem.entities.subsciber import SubscriberHandler
+            subscriber = SubscriberHandler().set(**match_command.dict())(func) if match_command else SubscriberHandler().set()(func)
+            temp_publisher = cls.delegate.search_publisher(event)
+            if not temp_publisher:
+                cls.delegate.publisher_list.append(Publisher(subscriber, bind_event=event))
+            else:
+                if subscriber.name not in temp_publisher.subscribers_names():
+                    temp_publisher.subscribers.append(subscriber)
+                else:
+                    raise ValueError(f"Function \"{subscriber.name}\" for {event.__name__} has already registered!")
+            if cls.current_module_name not in _module_target_dict:
+                _module_target_dict[cls.current_module_name] = [[event, subscriber]]
+            else:
+                _module_target_dict[cls.current_module_name].append([event, subscriber])
+            return func
+
+        return register_wrapper
 
     @classmethod
     def set_bellidin(cls, delegate, logger):
