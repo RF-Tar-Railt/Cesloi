@@ -6,7 +6,7 @@ from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
 from cesloi.message.element import Image, Plain
 from cesloi.message.messageChain import MessageChain
 from cesloi.communicate_with_mah import BotSession
-from cesloi.command import Command, AnyStr
+from cesloi.alconna import Alconna, AnyStr, Arpamar, Option
 from cesloi.delegatesystem import EventDelegate
 
 ed = EventDelegate()
@@ -21,24 +21,28 @@ bot = Cesloi(
     debug=False
 )
 
+Hello = Alconna(headers=["你好", "Hello"], command=" World", main_argument=Image)
+Weather = Alconna(headers=["cmd.", "bot"], command=f"{AnyStr}天气", options=[Option("-d", days=AnyStr)])
+
 
 @ed.register("FriendMessage")
-@sh.set(command=Command(headers=["你好", "Hello"], main=["World"]))
-async def test(app: Cesloi, friend: Friend, message: MessageChain):
+@sh.set(command=Hello)
+async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpamar):
     print(message.to_text())
     await app.send_with(friend, nudge=True)
     await app.send_friend_message(friend, "Hello,World!")
-    await app.send_with(friend, MessageChain([message.find(Image)]))
+    if arpamar.matched:
+        await app.send_with(friend, MessageChain.create(arpamar.main_argument))
 
 
 @ed.register(GroupMessage)
-@sh.set(command=Command(["cmd.", "bot"], [f"{AnyStr}天气", ["=", AnyStr, ""], ""]),
-        require_param_name="city",
-        is_replace_message=True)
-async def test1(app: Cesloi, city: MessageChain, group: Group):
-    city_list = city.to_text().split(',')
-    city_name = city_list[0]
-    await app.send_group_message(group, MessageChain([Plain(city_name)]), quote=city.find("Source"))
+@sh.set(command=Weather)
+async def test1(app: Cesloi, city: MessageChain, group: Group, arpamar: Arpamar):
+    city_name = arpamar.header
+    city_day = ""
+    if arpamar.has('d'):
+        city_day = arpamar.get('d')['days']
+    await app.send_group_message(group, MessageChain([Plain(city_name + city_day)]), quote=city.find("Source"))
 
 
 @ed.register(MemberLeaveEventKick)
