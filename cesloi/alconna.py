@@ -59,9 +59,13 @@ class Arpamar(BaseModel):
 
     Example:
         1.`Arpamar.main_argument` :当Alconna写入了main_argument时,该参数返回对应的解析出来的值
+
         2.`Arpamar.header` :当Alconna的command内写有正则表达式时,该参数返回对应的匹配值
+
         3.`Arpamar.has` :判断Arpamar内是否有对应的属性
+
         4.`Arpamar.get` :返回Arpamar中指定的属性
+
         5.`Arpamar.matched` :返回命令是否匹配成功
 
     """
@@ -100,7 +104,7 @@ class Arpamar(BaseModel):
 
 class Alconna(CommandInterface):
     """
-    亚尔康娜（Alconna），Cesloi之女
+    亚尔康娜（Alconna），Cesloi的妹妹
 
     用于更加奇怪(大雾)精确的命令解析，支持String与MessageChain
 
@@ -144,7 +148,8 @@ class Alconna(CommandInterface):
             options: Optional[Options_T] = None,
             main_argument: Optional[Argument_T] = None
     ):
-        if all([any([not headers, not command]), not options, not main_argument]):
+        # headers与command二者必须有其一
+        if all([all([not headers, not command]), not options, not main_argument]):
             raise ValueError("You must input one parameter!")
         super().__init__(
             headers=headers or [""],
@@ -158,7 +163,7 @@ class Alconna(CommandInterface):
     def analysis_message(self, message: Union[str, MessageChain]) ->Arpamar:
         self.result = Arpamar()
         if isinstance(message, str):
-            for i, _text in enumerate(message.split(' ')):
+            for i, _text in enumerate(message.split(' ')):  # 后续需要实现shlex的效果
                 if _text != '':
                     self.result.text_list.append([_text, i])
         else:
@@ -167,12 +172,13 @@ class Alconna(CommandInterface):
                 if ele.__class__.__name__ != "Plain":
                     self.result.elements[i] = ele
                 else:
-                    for _text in ele.text.split(" "):
+                    for _text in ele.text.split(" "):  # 后续需要实现shlex的效果
                         if _text != '':
                             self.result.text_list.append([_text, i])
 
+        # matched[0]表示当前有几个元素匹配成功， matched[1]表示需要匹配的元素总数
         self.result.matched = [0, len(self.result.text_list) + len(self.result.elements.values())]
-        _command_headers = []
+        _command_headers = []  # 依据headers与command生成一个列表，其中含有所有的命令头
         if self.headers != [""]:
             for i in self.headers:
                 _command_headers.append(i + self.command)
@@ -180,23 +186,23 @@ class Alconna(CommandInterface):
             _command_headers.append(self.command)
 
         if self.main_argument != "":
-            self.result.need_marg = True
-        _params = [self.main_argument]
+            self.result.need_marg = True  # 如果need_marg那么match的元素里一定得有main_argument
+        _params = [self.main_argument]  # params是除开命令头的剩下部分
         _params.extend(self.dict()['options'])
 
-        _text = self.result.text_list.pop(0)
+        _text = self.result.text_list.pop(0)  # 先匹配命令头
         for ch in _command_headers:
             if re.match(ch, _text[0]):
                 self.result.matched[0] += 1
                 self.result.results['header'] = re.findall('^' + ch + '$', _text[0])[0]
-                if self.result.results['header'] == _text[0]:
+                if self.result.results['header'] == _text[0]:  # 如果命令头内没有正则表达式的话findall此时相当于fullmatch
                     del self.result.results['header']
                 break
 
-        while self.result.text_list:
+        while self.result.text_list:  # 用while来方便pop
             _text = self.result.text_list.pop(0)
             for param in _params:
-                try:
+                try:  # 因为sub与opt一定是dict的，所以str型的param只能是marg
                     if isinstance(param, str) and re.match('^' + param + '$', _text[0]):
                         self.result.matched[0] += 1
                         self.result.results['main_argument'] = re.findall('^' + param + '$', _text[0])[0]
@@ -206,6 +212,7 @@ class Alconna(CommandInterface):
                         elif param['type'] == 'SBC':
                             self._analysis_subcommand(param, _text)
                     else:
+                        # 既不是str也不是dict的情况下认为param传入了一个类的Type
                         if type(self.result.elements[_text[1] + 1]) is param:
                             self.result.matched[0] += 1
                             self.result.results['main_argument'] = self.result.elements[_text[1] + 1]
@@ -214,6 +221,7 @@ class Alconna(CommandInterface):
                     continue
 
         try:
+            # 如果没写options并且marg不是str的话，匹配完命令头后是进不去上面的代码的，这里单独拿一段出来
             if self.result.elements and type(self.result.elements[_text[1] + 1]) is _params[0]:
                 self.result.matched[0] += 1
                 self.result.results['main_argument'] = self.result.elements[_text[1] + 1]
@@ -233,7 +241,7 @@ class Alconna(CommandInterface):
     def _analysis_option(self, param, text, option_dict):
         opt = param['name']
         arg = param['args']
-        if re.match(opt, text[0]):
+        if re.match(opt, text[0]):  # 先匹配选项名称
             self.result.matched[0] += 1
             if arg == {}:
                 option_dict[text[0]] = text[0]
@@ -247,12 +255,10 @@ class Alconna(CommandInterface):
                                 option_dict[text[0]] = {k: may_arg}
                             else:
                                 option_dict[text[0]][k] = may_arg
-                            # option_dict.append((text[0], {k: may_arg}))
-                            self.result.text_list.pop(0)
+                            self.result.text_list.pop(0)  # 防止下次循环把arg作为text去匹配
                     else:
                         if type(self.result.elements[text[1] + 1]) is v:
                             self.result.matched[0] += 1
-                            # option_dict.append((text[0], self.result.elements[text[1] + 1]))
                             if text[0] not in option_dict:
                                 option_dict[text[0]] = {k: self.result.elements[text[1] + 1]}
                             else:
@@ -266,6 +272,7 @@ class Alconna(CommandInterface):
             self.result.matched[0] += 1
             for option in param['Options']:
                 try:
+                    #  符合条件的sub-option才会进一步匹配
                     if re.match(option['name'], self.result.text_list[0][0]):
                         opt_text = self.result.text_list.pop(0)
                         self._analysis_option(option, opt_text, subcommand)
