@@ -17,3 +17,18 @@ class ApplicationRunning(TemplateEvent):
             params,
             Cesloi=self.bot
         )
+
+
+class ApplicationStop(TemplateEvent):
+    bot: Any
+
+    def __init__(self, bot):
+        super().__init__(bot=bot)
+
+    def get_params(self, params) -> Dict[str, Any]:
+        return ParamsAnalysis(
+
+        ).error_param_check(
+            params,
+            Cesloi=self.bot
+        )
