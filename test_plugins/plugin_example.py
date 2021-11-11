@@ -3,21 +3,20 @@ from cesloi.event.mirai import NewFriendRequestEvent
 from cesloi.model.relation import Friend
 from cesloi.message.element import Image
 from cesloi.message.messageChain import MessageChain
-from cesloi.command import Command
-from cesloi.plugin import Bellidin as bd, CommandHandler
+from cesloi.alconna import Alconna, Arpamar
+from cesloi.plugin import Bellidin as bd
 
 
 @bd.model_register(
     "FriendMessage",
-    match_command=CommandHandler(
-        command=Command(headers=["你好", "Hello"], main=["World"])
-    )
+    match_command=Alconna(headers=["你好", "Hello"], command=" World", main_argument=Image)
 )
-async def test(app: Cesloi, friend: Friend, message: MessageChain):
+async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpamar):
     print(message.to_text())
     await app.send_with(friend, nudge=True)
     await app.send_friend_message(friend, "Hello,World!")
-    await app.send_with(friend, MessageChain([message.find(Image)]))
+    if arpamar.matched:
+        await app.send_with(friend, MessageChain.create(arpamar.main_argument))
 
 
 @bd.model_register("NewFriendRequestEvent")
