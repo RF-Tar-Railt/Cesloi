@@ -9,7 +9,7 @@ from cesloi.plugin import Bellidin as bd
 
 @bd.model_register(
     "FriendMessage",
-    match_command=Alconna(headers=["你好", "Hello"], command=" World", main_argument=Image)
+    match_command=Alconna(headers=["你好", "Hello"], command="World", main_argument=Image)
 )
 async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpamar):
     print(message.to_text())
