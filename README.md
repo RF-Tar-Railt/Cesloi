@@ -21,15 +21,16 @@ from cesloi.bot_client import Cesloi
 from cesloi.model.relation import Friend
 from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
 from cesloi.communicate_with_mah import BotSession
-from cesloi.command import Command
+from cesloi.alconna import Alconna, Arpamar
 
 bot = Cesloi(bot_session=BotSession(host="YourHost", account="YourQQ", verify_key="YourVerifyKey"))
 sh = SubscriberHandler()
 
 @bot.register("FriendMessage")
-@sh.set(command=Command(["Hello"]))
-async def test(app: Cesloi, friend: Friend):
-    await app.send_with(friend, "Hello, World!")
+@sh.set(command=Alconna(command="Hello"))
+async def test(app: Cesloi, friend: Friend, result: Arpamar):
+    if result.matched:
+        await app.send_with(friend, "Hello, World!")
     
 bot.start()
 ```
@@ -48,16 +49,17 @@ In `test_plugins/example_plugin.py` :
 ```python
 from cesloi.bot_client import Cesloi
 from cesloi.model.relation import Friend
-from cesloi.command import Command
-from cesloi.plugin import Bellidin as bd, CommandHandler
+from cesloi.alconna import Alconna, Arpamar
+from cesloi.plugin import Bellidin as bd
 
 
 @bd.model_register(
     "FriendMessage",
-    match_command=CommandHandler(command=Command(headers=["你好", "Hello"], main=["World"]))
+    match_command=Alconna(headers=["你好", "Hello"], command="World")
 )
-async def test(app: Cesloi, friend: Friend):
-    await app.send_with(friend, "Hello, World!")
+async def test(app: Cesloi, friend: Friend, result: Arpamar):
+    if result.matched:
+        await app.send_with(friend, "Hello, World!")
 ```
 
 ## 未来开发计划
