@@ -11,6 +11,10 @@
 
 注: mirai-api-http 需要启用ws adapter和http adapter
 
+## 文档
+
+[Cesloi暂时的文档](https://github.com/RF-Tar-Railt/Cesloi/wiki)
+
 ## 安装
 `pip install cesloi`
 
