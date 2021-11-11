@@ -12,7 +12,7 @@ bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=123456
 
 
 @bot.register("FriendMessage")
-@sh.set(command=Alconna(headers=["你好", "Hello"], command=" World", main_argument=Image))
+@sh.set(command=Alconna(headers=["你好", "Hello"], command="World", main_argument=Image))
 async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpamar):
     print(message.to_text())
     await app.send_with(friend, nudge=True)
