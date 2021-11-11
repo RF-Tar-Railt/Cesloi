@@ -158,7 +158,7 @@ class At(MessageElement):
         super().__init__(target=target, **kwargs)
 
     def to_text(self) -> str:
-        return f'[@{str(self.display)} ]' if self.display else f"[@{self.target} ]"
+        return f'@{str(self.display)}' if self.display else f"@{self.target}"
 
     @staticmethod
     def from_json(json: Dict) -> "At":
@@ -170,7 +170,7 @@ class AtAll(MessageElement):
     type: str = "AtAll"
 
     def to_text(self) -> str:
-        return "[@全体成员 ]"
+        return "@全体成员"
 
     @staticmethod
     def from_json(json: Dict):
@@ -335,9 +335,6 @@ class Image(MediaElement):
     def to_text(self) -> str:
         return "[图片]"
 
-    def to_serialization(self) -> str:
-        return f"[mirai:image:{self.imageId}]"
-
     @staticmethod
     def from_json(json: Dict):
         return Image.parse_obj(json)
@@ -384,9 +381,6 @@ class FlashImage(Image):
 
     def to_text(self) -> str:
         return "[闪照]"
-
-    def to_serialization(self) -> str:
-        return f"[mirai:flash:{self.imageId}]"
 
     @staticmethod
     def from_json(json: Dict):
@@ -435,9 +429,6 @@ class Voice(MediaElement):
 
     def to_text(self) -> str:
         return "[语音]"
-
-    def to_serialization(self) -> str:
-        return f"[mirai:voice:{self.voiceId}]"
 
     @staticmethod
     def from_json(json: Dict):
