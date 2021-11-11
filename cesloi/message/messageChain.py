@@ -2,7 +2,7 @@ from typing import List, Iterable, Type, Union
 
 from pydantic import BaseModel
 
-from cesloi.message.element import MessageElement, _update_forward_refs
+from cesloi.message.element import MessageElement, _update_forward_refs, Source, Quote, File
 
 
 class MessageChain(BaseModel):
@@ -69,7 +69,8 @@ class MessageChain(BaseModel):
         Returns:
             str: 序列化的字符串形式的消息链
         """
-        return "__root__: " + "".join(i.to_serialization() for i in self.__root__)
+        return "__root__: " + "".join(i.to_serialization()
+                                      for i in self.replace_text('[', '[_').replace_text(']', '_]').__root__)
 
     @staticmethod
     def from_text(text: str) -> "MessageChain":
@@ -80,6 +81,14 @@ class MessageChain(BaseModel):
         """获取消息链中的纯文字部分
         """
         return "".join(i.to_text() if i else "" for i in self.findall("Plain"))
+
+    def is_instance(self, element_type: Union[str, Type[MessageElement]]) -> bool:
+        if isinstance(element_type, str):
+            element_type = MessageChain.search_element(element_type)
+        for i, v in enumerate(self.__root__):
+            if type(v) is not element_type:
+                return False
+        return True
 
     def findall(self, element_type: Union[str, Type[MessageElement]]) -> List[MessageElement]:
         if isinstance(element_type, str):
@@ -131,12 +140,12 @@ class MessageChain(BaseModel):
             element_type = MessageChain.search_element(element_type)
         new_message = MessageChain(self.__root__)
         if not counts:
-            for i in range(0, len(self.__root__)):
-                if type(self.__root__[i]) is element_type:
+            for i, v in enumerate(self.__root__):
+                if type(v) is element_type:
                     new_message.__root__[i] = new_element
         elif counts > 0:
-            for i in range(0, len(self.__root__)):
-                if type(self.__root__[i]) is element_type:
+            for i, v in enumerate(self.__root__):
+                if type(v) is element_type:
                     counts -= 1
                     new_message.__root__[i] = new_element
                 if counts == 0:
@@ -154,7 +163,7 @@ class MessageChain(BaseModel):
             MessageChain: 新的消息链
         """
         new_message = MessageChain(self.__root__)
-        from .element import Plain
+        from cesloi.message.element import Plain
         for ele in new_message:
             if isinstance(ele, Plain):
                 ele.text = ele.text.replace(old_text, new_text, counts)
@@ -246,7 +255,7 @@ class MessageChain(BaseModel):
             return self
 
     def __repr__(self) -> str:
-        return f"MessageChain({repr(self.__root__)})"
+        return fr"MessageChain({repr(self.__root__)})"
 
     def __iter__(self) -> Iterable[MessageElement]:
         yield from self.__root__
@@ -266,6 +275,9 @@ class MessageChain(BaseModel):
         else:
             return self.has(item)
 
+    def to_sendable(self):
+        return self.remove(Source).remove(Quote).remove(File)
+
     def startswith(self, string: str) -> bool:
         if not self.__root__:
             return False
@@ -278,3 +290,11 @@ class MessageChain(BaseModel):
 
 
 _update_forward_refs()
+
+if __name__ == "__main__":
+    from cesloi.message.element import Plain, At, Image
+    msg = MessageChain.create(At(123, display="ccc"), Plain("[bbb]"), Image(base64="aaaa"))
+    print(str(msg))
+    print(msg.to_text())
+    print(msg.to_serialization())
+    print(msg.append(At(456)).insert(2, Plain(" ddd")).to_text())
