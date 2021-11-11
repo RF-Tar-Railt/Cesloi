@@ -3,6 +3,7 @@ from pydantic.main import BaseModel
 import functools
 from typing import Callable
 from .paramsInserter import TemplateParamsInserter
+from ...alconna import Arpamar
 
 
 class TemplateEvent(BaseModel):
@@ -60,7 +61,9 @@ class ParamsAnalysis:
         """
         arguments_dict = {}
         for k, v in params.items():
-            if v[0].__name__ in kwargs.keys():
+            if v[0].__name__ == "Arpamar":
+                arguments_dict[k] = Arpamar()
+            elif v[0].__name__ in kwargs.keys():
                 if isinstance(kwargs[v[0].__name__], Dict):
                     arguments_dict[k] = kwargs[v[0].__name__][v[1]]
                 else:
