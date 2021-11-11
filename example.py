@@ -8,7 +8,7 @@ from cesloi.communicate_with_mah import BotSession
 from cesloi.alconna import Alconna, Arpamar
 
 sh = SubscriberHandler()
-bot = Cesloi(bot_session=BotSession(host="http://localhost:9080", account=2582049752, verify_key="INITKEYWylsVdbr"), debug=True)
+bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"), debug=True)
 
 
 @bot.register("FriendMessage")
