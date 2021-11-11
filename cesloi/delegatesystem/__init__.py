@@ -27,7 +27,7 @@ class EventDelegate:
     def handle_event(self, event: TemplateEvent):
         current_time = time.time()
         if current_time - self.last_time > self.safe_interval:
-            self.create_task(
+            self.loop.create_task(
                 self.exec_subscriber(
                     publisher=self.search_publisher(event.__class__),
                     event=event)
@@ -50,18 +50,15 @@ class EventDelegate:
                     break
 
     @staticmethod
-    async def get_coroutine_executable_target(target, real_arguments, message):
+    async def get_coroutine_executable_target(target, arguments, message):
         # subscriber的command/time处理
-        command_result = SubscriberHandler.command_handler(target, message)
-        if command_result[0]:
-            # 参数替换的处理
-            real_arguments = SubscriberHandler.params_handler(target, real_arguments, command_result[1], message)
-            try:
-                result = await target.callable_target(**real_arguments)
-            except Exception as e:
-                traceback.print_exc()
-                raise e
-            return result
+        real_arguments = SubscriberHandler.command_handler(target, message, arguments)
+        try:
+            result = await target.callable_target(**real_arguments)
+        except Exception as e:
+            traceback.print_exc()
+            raise e
+        return result
 
     def search_publisher(self, event: Type[TemplateEvent]):
         for publisher in self.publisher_list:
