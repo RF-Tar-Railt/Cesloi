@@ -21,7 +21,7 @@ bot = Cesloi(
     debug=False
 )
 
-Hello = Alconna(headers=["你好", "Hello"], command=" World", main_argument=Image)
+Hello = Alconna(headers=["你好", "Hello"], command="World", main_argument=Image)
 Weather = Alconna(headers=["cmd.", "bot"], command=f"{AnyStr}天气", options=[Option("-d", days=AnyStr)])
 
 
