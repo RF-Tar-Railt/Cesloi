@@ -2,36 +2,12 @@ import os
 from types import ModuleType
 from typing import Optional, Dict, Union, Type, Callable
 import importlib
-
-from pydantic import BaseModel
-
 from .delegatesystem import EventDelegate, TemplateEvent, Publisher
 from .logger import Logger
-from .command import Command
+from .alconna import Alconna
 
 
 _module_target_dict: Dict[str, list] = {}
-
-
-class CommandHandler(BaseModel):
-    command: Command
-    require_param_name: str = None,
-    is_replace_message: bool = True
-
-    def __init__(
-            self,
-            command: Command,
-            require_param_name: Optional[str] = None,
-            is_replace_message: bool = True
-    ):
-        super().__init__(
-            command=command,
-            is_replace_message=is_replace_message
-        )
-        self.require_param_name = require_param_name
-
-    class Config:
-        arbitrary_types_allowed = True
 
 
 class TemplatePlugin:
@@ -40,7 +16,7 @@ class TemplatePlugin:
     usage: str
     is_close: bool = False
 
-    def __init__(self, module, name:Optional[str] = None, usage: Optional[str] = None):
+    def __init__(self, module, name: Optional[str] = None, usage: Optional[str] = None):
         if hasattr(module.__init__, "__annotations__"):
             module.__init__(**module.__init__.__annotations__)
         self.module = module
@@ -49,8 +25,10 @@ class TemplatePlugin:
 
 
 class Bellidin:
-    """插件管理器
+    """
+    贝利丁(Bellidin), Cesloi的哥哥
 
+    Cesloi的插件管理器
      - set_bellidin: 初始化管理器，通常不需要管
      - install_plugin: 载入单个模块，需要提供相对路径
      - install_plugins: 载入文件夹下的所有模块，需要提供相对路径
@@ -67,7 +45,7 @@ class Bellidin:
             cls,
             event: Union[str, Type[TemplateEvent]],
             *,
-            match_command: Optional[CommandHandler] = None
+            match_command: Optional[Alconna] = None
     ):
         if not cls.delegate:
             raise RuntimeError("Delegate didn't existed!")
@@ -79,7 +57,7 @@ class Bellidin:
 
         def register_wrapper(func: Callable):
             from .delegatesystem.entities.subsciber import SubscriberHandler
-            subscriber = SubscriberHandler().set(**match_command.dict())(func) if match_command else SubscriberHandler().set()(func)
+            subscriber = SubscriberHandler().set(command=match_command)(func)
             temp_publisher = cls.delegate.search_publisher(event)
             if not temp_publisher:
                 cls.delegate.publisher_list.append(Publisher(subscriber, bind_event=event))
