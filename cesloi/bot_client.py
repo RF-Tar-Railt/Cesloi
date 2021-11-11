@@ -2,10 +2,10 @@ import asyncio
 import time
 from asyncio import Task
 from typing import Optional, Union, List
-from cesloi.context import enter_message_send_context, UploadMethods, bot_application_context_manager, upload_method
+from cesloi.utils import enter_message_send_context, UploadMethods, bot_application_context_manager, upload_method
 from cesloi.delegatesystem import EventDelegate
 from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
-from cesloi.event.lifecycle import ApplicationRunning
+from cesloi.event.lifecycle import ApplicationRunning, ApplicationStop
 from cesloi.event.messages import Message, GroupMessage, FriendMessage, TempMessage
 from cesloi.logger import Logger
 from cesloi.communicate_with_mah import BotSession, Communicator
@@ -107,6 +107,7 @@ class Cesloi:
     async def close(self):
         if self.running:
             self.running = False
+            self.delegate.handle_event(ApplicationStop(self))
             self.uninstall_plugins()
             if self.daemon_task:
                 self.daemon_task.cancel()
@@ -115,6 +116,10 @@ class Cesloi:
             for t in asyncio.all_tasks(self.delegate.loop):
                 if t is not asyncio.current_task(self.delegate.loop):
                     t.cancel()
+                    try:
+                        await t
+                    except asyncio.CancelledError:
+                        pass
 
     def start(self, loop: Optional[asyncio.AbstractEventLoop] = None):
         if self.delegate:
@@ -173,7 +178,7 @@ class Cesloi:
             "GET",
             {"sessionKey": self.bot_session.sessionKey, "id": messageId}
         )
-        return MessageChain.parse_obj(result)
+        return MessageChain.parse_obj(result['messageChain'])
 
     async def get_friend_list(self):
         result = await self.communicator.send_handle(
@@ -318,7 +323,7 @@ class Cesloi:
                     )
                 }
             )
-            self.logger.info(f"[BOT {self.bot_session.account}] Friend({target_id}) <- {message.to_text()}")
+            self.logger.info(rf"[BOT {self.bot_session.account}] Friend({target_id}) <- {message.to_text()}")
             return BotMessage.parse_obj({"messageId": result['messageId']})
 
     @bot_application_context_manager
@@ -355,7 +360,7 @@ class Cesloi:
                     )
                 }
             )
-            self.logger.info(f"[BOT {self.bot_session.account}] Group({target_id}) <- {message.to_text()}")
+            self.logger.info(rf"[BOT {self.bot_session.account}] Group({target_id}) <- {message.to_text()}")
             return BotMessage.parse_obj({"messageId": result['messageId']})
 
     @bot_application_context_manager
@@ -400,7 +405,7 @@ class Cesloi:
                 }
             )
             self.logger.info(
-                f"[BOT {self.bot_session.account}] Member({target_id}, in {group_id}) <- {message.to_text()}")
+                rf"[BOT {self.bot_session.account}] Member({target_id}, in {group_id}) <- {message.to_text()}")
             return BotMessage.parse_obj({"messageId": result['messageId']})
 
     @bot_application_context_manager
