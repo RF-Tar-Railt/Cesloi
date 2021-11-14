@@ -123,6 +123,7 @@ class Bellidin:
     def uninstall_plugins(cls, *args, **kwargs):
         plugin_count = 0
         for module_name in cls._modules:
+            cls.logger.debug(f"plugin: {module_name} uninstalling")
             targets = _module_target_dict[module_name]
             for target in targets:
                 t_publisher = cls.delegate.search_publisher(target[0])
@@ -169,6 +170,7 @@ class Bellidin:
                     else:
                         cls.logger.debug(f"plugin: {module.__name__} is uninstalled")
                         module.is_close = True
+                del cls._modules[module_name]
             else:
                 raise ValueError(f"No such plugin named {module_name}")
         except Exception as e:
@@ -181,10 +183,10 @@ class Bellidin:
             if new_plugins_dir:
                 cls.uninstall_plugins(cls.plugins_dir)
                 cls.plugins_dir = new_plugins_dir
-                cls.logger.info(f"reload plugins at {new_plugins_dir}")
+                cls.logger.info(f"reload plugins at \"./{new_plugins_dir}\"")
                 return cls.install_plugins(new_plugins_dir)
             else:
-                cls.logger.info(f"reload plugins at {cls.plugins_dir}")
+                cls.logger.info(f"reload plugins at \"./{cls.plugins_dir}\"")
                 plugin_count = 0
                 for module_name in cls._modules:
                     targets = _module_target_dict[module_name]
@@ -196,9 +198,9 @@ class Bellidin:
                     _module_target_dict[module_name].clear()
                     module = cls._modules[module_name].module
                     importlib.reload(module)
+                    cls.logger.debug(f"plugin: {module.__name__} is reloaded")
                     plugin_count += 1
 
-                cls._modules.clear()
                 cls.logger.info(f"{plugin_count} plugins have been reload successfully")
                 return plugin_count
         except Exception as e:
