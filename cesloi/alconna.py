@@ -69,12 +69,16 @@ class Arpamar(BaseModel):
         5.`Arpamar.matched` :返回命令是否匹配成功
 
     """
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.current_index = 0  # 记录解析时当前字符串的index
+        self.is_str = False  # 是否解析的是string
         self.results = {'options': {}}
         self.elements = {}
-        self.text_list = []
-        self.matched = []
+        self.raw_texts = []
+        self.matched = False
+        self.match_table = []
         self.need_marg = False
 
     @property
@@ -97,6 +101,19 @@ class Arpamar(BaseModel):
 
     def has(self, name: str) -> bool:
         return name in self.__dict__
+
+    def split_by(self, separate: str):
+        _text = ""  # 重置
+        _rest_text = ""
+
+        if self.raw_texts[self.current_index][0]:  # 如果命令头匹配后还有字符串没匹配到
+            _text, _rest_text = Alconna.split_once(self.raw_texts[self.current_index][0], separate)
+
+        elif not self.is_str and len(self.raw_texts) > 1:  # 如果命令头匹配后字符串为空则有两种可能，这里选择不止一段字符串
+            self.current_index += 1
+            _text, _rest_text = Alconna.split_once(self.raw_texts[self.current_index][0], separate)
+
+        return _text, _rest_text
 
     class Config:
         extra = 'allow'
@@ -138,7 +155,6 @@ class Alconna(CommandInterface):
     command: str
     options: Options_T
     main_argument: Argument_T
-    result: Arpamar
 
     def __init__(
             self,
@@ -157,27 +173,63 @@ class Alconna(CommandInterface):
             separator=separator or " ",
             options=options or [],
             main_argument=main_argument or "",
-            result=Arpamar()
         )
 
-    def analysis_message(self, message: Union[str, MessageChain]) ->Arpamar:
+    @staticmethod
+    def split_once(text: str, separate: str):  # 相当于另类的pop
+        out_text = ""
+        quotation_stack = []
+        is_split = True
+        for char in text:
+            if re.match('[\'|\"]', char):  # 遇到引号括起来的部分跳过分隔
+                if not quotation_stack:
+                    is_split = False
+                    quotation_stack.append(char)
+                else:
+                    is_split = True
+                    quotation_stack.pop(-1)
+            if separate == char and is_split:
+                break
+            out_text += char
+        return out_text, text.replace(out_text, "", 1).replace(separate, "", 1)
+
+    @staticmethod
+    def split(text: str, separate: str = " ", max_split: int = -1):
+        text_list = []
+        quotation_stack = []
+        is_split = True
+        while all([text, max_split]):
+            out_text = ""
+            for char in text:
+                if re.match('[\'|\"]', char):  # 遇到引号括起来的部分跳过分隔
+                    if not quotation_stack:
+                        is_split = False
+                        quotation_stack.append(char)
+                    else:
+                        is_split = True
+                        quotation_stack.pop(-1)
+                if separate == char and is_split:
+                    break
+                out_text += char
+            text_list.append(out_text)
+            text = text.replace(out_text, "", 1).replace(separate, "", 1)
+            max_split -= 1
+        if text:
+            text_list.append(text)
+        return text_list
+
+    def analysis_message(self, message: Union[str, MessageChain]) -> Arpamar:
         self.result = Arpamar()
         if isinstance(message, str):
-            for i, _text in enumerate(message.split(' ')):  # 后续需要实现shlex的效果
-                if _text != '':
-                    self.result.text_list.append([_text, i])
+            self.result.raw_texts.append([message, 0])
         else:
             message = message.copy_self().to_sendable()
             for i, ele in enumerate(message):
                 if ele.__class__.__name__ != "Plain":
                     self.result.elements[i] = ele
                 else:
-                    for _text in ele.text.split(" "):  # 后续需要实现shlex的效果
-                        if _text != '':
-                            self.result.text_list.append([_text, i])
+                    self.result.raw_texts.append([ele.text, i])
 
-        # matched[0]表示当前有几个元素匹配成功， matched[1]表示需要匹配的元素总数
-        self.result.matched = [0, len(self.result.text_list) + len(self.result.elements.values())]
         _command_headers = []  # 依据headers与command生成一个列表，其中含有所有的命令头
         if self.headers != [""]:
             for i in self.headers:
@@ -190,96 +242,117 @@ class Alconna(CommandInterface):
         _params = [self.main_argument]  # params是除开命令头的剩下部分
         _params.extend(self.dict()['options'])
 
-        _text = self.result.text_list.pop(0)  # 先匹配命令头
+        _head = False  # 先匹配命令头
+        _text, self.result.raw_texts[0][0] = self.result.split_by(self.separator)
         for ch in _command_headers:
-            if re.match(ch, _text[0]):
-                self.result.matched[0] += 1
-                self.result.results['header'] = re.findall('^' + ch + '$', _text[0])[0]
-                if self.result.results['header'] == _text[0]:  # 如果命令头内没有正则表达式的话findall此时相当于fullmatch
+            if re.match('^' + ch + '$', _text):
+                _head = True
+                self.result.results['header'] = re.findall('^' + ch + '$', _text)[0]
+                if self.result.results['header'] == _text:  # 如果命令头内没有正则表达式的话findall此时相当于fullmatch
                     del self.result.results['header']
                 break
 
-        while self.result.text_list:  # 用while来方便pop
-            _text = self.result.text_list.pop(0)
-            for param in _params:
-                try:  # 因为sub与opt一定是dict的，所以str型的param只能是marg
-                    if isinstance(param, str) and re.match('^' + param + '$', _text[0]):
-                        self.result.matched[0] += 1
-                        self.result.results['main_argument'] = re.findall('^' + param + '$', _text[0])[0]
-                    elif isinstance(param, dict):
-                        if param['type'] == 'OPT':
-                            self._analysis_option(param, _text, self.result.results['options'])
-                        elif param['type'] == 'SBC':
-                            self._analysis_subcommand(param, _text)
+        _text_static = {}  # 统计字符串被切出来的次数
+        while not all(list(map(lambda x: x[0] == "", self.result.raw_texts))):
+            try:
+                for param in _params:
+                    _text, _rest_text = self.result.split_by(self.separator)
+                    try:  # 因为sub与opt一定是dict的，所以str型的param只能是marg
+                        if isinstance(param, str) and re.match('^' + param + '$', _text):
+                            self.result.results['main_argument'] = re.findall('^' + param + '$', _text)[0]
+                            self.result.raw_texts[self.result.current_index][0] = _rest_text
+                        elif isinstance(param, dict):
+                            if param['type'] == 'OPT':
+                                self._analysis_option(param, _text, _rest_text, self.result.results['options'])
+                            elif param['type'] == 'SBC':
+                                self._analysis_subcommand(param, _text, _rest_text)
+                        else:
+                            # 既不是str也不是dict的情况下，认为param传入了一个类的Type
+                            may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+                            if type(self.result.elements[may_element_index]) is param:
+                                self.result.results['main_argument'] = self.result.elements[may_element_index]
+                                del self.result.elements[may_element_index]
+                    except (IndexError, KeyError):
+                        continue
+                    if _text not in _text_static:
+                        _text_static[_text] = 1
                     else:
-                        # 既不是str也不是dict的情况下认为param传入了一个类的Type
-                        if type(self.result.elements[_text[1] + 1]) is param:
-                            self.result.matched[0] += 1
-                            self.result.results['main_argument'] = self.result.elements[_text[1] + 1]
-                            del self.result.elements[_text[1] + 1]
-                except (IndexError, KeyError):
-                    continue
+                        _text_static[_text] += 1
+                    if _text_static[_text] > len(_params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
+                        _text_static[""] += 1
+            except (IndexError, KeyError):
+                break
 
         try:
             # 如果没写options并且marg不是str的话，匹配完命令头后是进不去上面的代码的，这里单独拿一段出来
-            if self.result.elements and type(self.result.elements[_text[1] + 1]) is _params[0]:
-                self.result.matched[0] += 1
-                self.result.results['main_argument'] = self.result.elements[_text[1] + 1]
-                del self.result.elements[_text[1] + 1]
+            may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+            if self.result.elements and type(self.result.elements[may_element_index]) is _params[0]:
+                self.result.results['main_argument'] = self.result.elements[may_element_index]
+                del self.result.elements[may_element_index]
         except (IndexError, KeyError):
             pass
 
-        if self.result.matched[0] == self.result.matched[1] \
+        if _head and len(self.result.elements) == 0 and all(list(map(lambda x: x[0] == "", self.result.raw_texts))) \
                 and (not self.result.need_marg or (self.result.need_marg and 'main_argument' in self.result.results)):
             self.result.matched = True
             self.result.analysis_result()
         else:
-            self.result.matched = False
             self.result.results.clear()
         return self.result
 
-    def _analysis_option(self, param, text, option_dict):
+    def _analysis_option(self, param, text, rest_text, option_dict):
         opt = param['name']
         arg = param['args']
-        if re.match(opt, text[0]):  # 先匹配选项名称
-            self.result.matched[0] += 1
+        sep = param['separator']
+        name, may_arg = self.split_once(text, sep)
+        if sep == self.separator:  # 在sep等于separator的情况下name是被提前切出来的
+            name = text
+        if re.match('^' + opt + '$', name):  # 先匹配选项名称
+            self.result.raw_texts[self.result.current_index][0] = rest_text
             if arg == {}:
-                option_dict[text[0]] = text[0]
+                option_dict[text] = text
             else:
                 for k, v in arg.items():
                     if isinstance(v, str):
-                        may_arg = self.result.text_list[0][0]
+                        if sep == self.separator:
+                            may_arg, rest_text = self.result.split_by(sep)
                         if re.match('^' + v + '$', may_arg):
-                            self.result.matched[0] += 1
-                            if text[0] not in option_dict:
-                                option_dict[text[0]] = {k: may_arg}
+                            if name not in option_dict:
+                                option_dict[name] = {k: may_arg}
                             else:
-                                option_dict[text[0]][k] = may_arg
-                            self.result.text_list.pop(0)  # 防止下次循环把arg作为text去匹配
+                                option_dict[name][k] = may_arg
+                            if sep == self.separator:
+                                self.result.raw_texts[self.result.current_index][0] = rest_text
                     else:
-                        if type(self.result.elements[text[1] + 1]) is v:
-                            self.result.matched[0] += 1
-                            if text[0] not in option_dict:
-                                option_dict[text[0]] = {k: self.result.elements[text[1] + 1]}
+                        may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+                        if type(self.result.elements[may_element_index]) is v:
+                            if name not in option_dict:
+                                option_dict[name] = {k: self.result.elements[may_element_index]}
                             else:
-                                option_dict[text[0]][k] = self.result.elements[text[1] + 1]
-                            del self.result.elements[text[1] + 1]
+                                option_dict[name][k] = self.result.elements[may_element_index]
+                            del self.result.elements[may_element_index]
 
-    def _analysis_subcommand(self, param, text):
+    def _analysis_subcommand(self, param, text, rest_text):
         subcommand = {}
         command = param['name']
-        if re.match('^' + command + '$', text[0]):
-            self.result.matched[0] += 1
+        sep = param['separator']
+        name, may_text = self.split_once(text, sep)
+        if sep == self.separator:
+            name = text
+        if re.match('^' + command + '$', name):
+            self.result.raw_texts[self.result.current_index][0] = rest_text
             for option in param['Options']:
                 try:
-                    #  符合条件的sub-option才会进一步匹配
-                    if re.match(option['name'], self.result.text_list[0][0]):
-                        opt_text = self.result.text_list.pop(0)
-                        self._analysis_option(option, opt_text, subcommand)
+                    if sep == self.separator:
+                        may_text, rest_text = self.result.split_by(sep)
+                    self._analysis_option(option, may_text, rest_text, subcommand)
                 except (IndexError, KeyError):
                     continue
-            if text[0] not in self.result.results['options']:
-                self.result.results['options'][text[0]] = subcommand
+            if name not in self.result.results['options']:
+                self.result.results['options'][name] = subcommand
+
+    class Config:
+        extra = "allow"
 
 
 if __name__ == "__main__":
@@ -292,7 +365,7 @@ if __name__ == "__main__":
             Subcommand(
                 "test",
                 Option("-u", username=AnyStr)
-            ),
+            ).separate(' '),
             Option("-n", count=AnyDigit),
             Option("-t"),
             Option("-u", At=At)
@@ -301,7 +374,7 @@ if __name__ == "__main__":
     )
     msg = MessageChain.create("/ping -u", At(123), "test -u AAA -n 222 127.0.0.1")
     print(msg)
-    print(ping.analysis_message(msg).get('test'))
+    print(ping.analysis_message(msg).results)
 
     msg1 = MessageChain.create("/ping 127.0.0.1 -u", At(123))
     print(msg1)
@@ -345,12 +418,12 @@ if __name__ == "__main__":
     ccc = Alconna(
         headers=[""],
         command="help",
-        main_argument='-l'
+        main_argument=AnyStr
     )
-    msg = "help -l"
+    msg = "help \"what he say?\""
     print(msg)
     result = ccc.analysis_message(msg)
-    print(result.matched)
+    print(result.main_argument)
 
     ddd = Alconna(
         headers=[""],
@@ -363,3 +436,27 @@ if __name__ == "__main__":
     print(msg)
     result = ddd.analysis_message(msg)
     print(result.get('sum'))
+
+    ddd = Alconna(
+        headers=[""],
+        command="点歌",
+        options=[
+            Option("歌名", song_name=AnyStr).separate('：'),
+            Option("歌手", singer_name=AnyStr).separate('：')
+        ]
+    )
+    msg = "点歌 歌名：Freejia"
+    print(msg)
+    result = ddd.analysis_message(msg)
+    print(result.matched)
+
+    eee = Alconna(
+        headers=[""],
+        command=f"RD{AnyDigit}?=={AnyDigit}"
+    )
+    msg = "RD100==36"
+    print(msg)
+    result = eee.analysis_message(msg)
+    print(result.results)
+
+    print(Alconna.split("Hello! \"what is it?\" aaa bbb"))
