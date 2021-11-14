@@ -1,9 +1,10 @@
 import inspect
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, TYPE_CHECKING
 from pydantic import BaseModel
-from inspect import iscoroutinefunction
 from cesloi.message.messageChain import MessageChain
 from cesloi.alconna import Alconna
+if TYPE_CHECKING:
+    from cesloi.timing.schedule import Toconado
 
 
 class SubscriberInterface(BaseModel):
@@ -19,7 +20,7 @@ class Subscriber(SubscriberInterface):
             callable_target: Callable,
             subscriber_name: Optional[str] = None,
             command: Optional[Alconna] = None,
-            time_schedule: Callable = None,
+            time_schedule: Optional["Toconado"] = None,
     ) -> None:
         super().__init__(
             callable_target=callable_target
@@ -27,8 +28,8 @@ class Subscriber(SubscriberInterface):
         self.command = command
         self.subscriber_name = subscriber_name or callable_target.__name__
         self.time_schedule = time_schedule
-        if not iscoroutinefunction(callable_target):
-            raise TypeError("Your Function must be a coroutine function (use async)!")
+        # if not iscoroutinefunction(callable_target):
+        #    raise TypeError("Your Function must be a coroutine function (use async)!")
 
     def __call__(self, *args, **kwargs):
         return self.callable_target(*args, **kwargs)
@@ -59,7 +60,7 @@ class Subscriber(SubscriberInterface):
 
     subscriber_name: Optional[str]
     command: Optional[Alconna] = None
-    time_schedule: Callable = None
+    time_schedule: Optional["Toconado"] = None
 
 
 class SubscriberHandler:
@@ -72,7 +73,7 @@ class SubscriberHandler:
         self,
         subscriber_name: Optional[str] = None,
         command: Alconna = None,
-        # time_schedule: Callable = None,
+        time_schedule: "Toconado" = None,
     ):
         """该方法生成一个订阅器实例，该订阅器负责调控装饰的可执行函数
 
@@ -83,13 +84,14 @@ class SubscriberHandler:
         Args:
             subscriber_name :装饰器名字，可选
             command :命令处理器，可选
+            time_schedule: 时间调度器，相当于执行间隔，可选
         """
         def wrapper(func):
             self.subscriber = Subscriber(
                 func,
                 subscriber_name,
-                command
-                # time_schedule
+                command,
+                time_schedule
             )
             return self.subscriber
 
@@ -104,4 +106,10 @@ class SubscriberHandler:
             if v.__class__.__name__ == "Arpamar":
                 args[k] = result
                 break
-        return result
+        return args
+
+    @staticmethod
+    def schedule_handler(sub: Subscriber):
+        if not sub.time_schedule:
+            return True
+        return sub.time_schedule.should_run()
