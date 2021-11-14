@@ -61,7 +61,7 @@ class MessageChain(BaseModel):
         Returns:
             str: 以字符串形式表示的消息链
         """
-        return "".join(i.to_text() for i in self.__root__)
+        return r"".join(i.to_text() for i in self.__root__)
 
     def to_serialization(self) -> str:
         """获取可序列化的字符串形式表示的消息链, 会存储所有的信息.
