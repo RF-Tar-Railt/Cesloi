@@ -106,8 +106,8 @@ class Cesloi:
 
     async def close(self):
         if self.running:
-            self.running = False
             self.delegate.handle_event(ApplicationStop(self))
+            self.running = False
             self.uninstall_plugins()
             if self.daemon_task:
                 self.daemon_task.cancel()
@@ -127,22 +127,23 @@ class Cesloi:
         else:
             loop = loop or asyncio.get_event_loop()
 
-        if not self.running:
-            self.running = True
-            start_time = time.time()
-            self.logger.info("Cesloi Application Starting...")
-            self.daemon_task = loop.create_task(self.running_task())
-            while not self.bot_session.sessionKey:
-                loop.run_until_complete(asyncio.sleep(0.001))
-            self.delegate.handle_event(ApplicationRunning(self))
-            self.logger.info(f"Cesloi Application Started with {time.time() - start_time:.2}s")
-
         try:
+            if not self.running:
+                self.running = True
+                start_time = time.time()
+                self.logger.info("Cesloi Application Starting...")
+                self.daemon_task = loop.create_task(self.running_task())
+                while not self.bot_session.sessionKey:
+                    loop.run_until_complete(asyncio.sleep(0.001))
+                self.delegate.handle_event(ApplicationRunning(self))
+                self.logger.info(f"Cesloi Application Started with {time.time() - start_time:.2}s")
+
             if self.daemon_task:
                 loop.run_until_complete(self.daemon_task)
         except KeyboardInterrupt or asyncio.CancelledError:
             self.logger.warning("Interrupt detected, bot stopping ...")
         loop.run_until_complete(self.close())
+        self.logger.info("Cesloi shutdown. Have a nice day!")
 
     def register(self, *args, **kwargs):
         """
@@ -323,7 +324,7 @@ class Cesloi:
                     )
                 }
             )
-            self.logger.info(rf"[BOT {self.bot_session.account}] Friend({target_id}) <- {message.to_text()}")
+            self.logger.info(f"[BOT {self.bot_session.account}] Friend({target_id}) <- {message.to_text()}")
             return BotMessage.parse_obj({"messageId": result['messageId']})
 
     @bot_application_context_manager
@@ -360,7 +361,7 @@ class Cesloi:
                     )
                 }
             )
-            self.logger.info(rf"[BOT {self.bot_session.account}] Group({target_id}) <- {message.to_text()}")
+            self.logger.info(f"[BOT {self.bot_session.account}] Group({target_id}) <- {message.to_text()}")
             return BotMessage.parse_obj({"messageId": result['messageId']})
 
     @bot_application_context_manager
@@ -405,7 +406,7 @@ class Cesloi:
                 }
             )
             self.logger.info(
-                rf"[BOT {self.bot_session.account}] Member({target_id}, in {group_id}) <- {message.to_text()}")
+                f"[BOT {self.bot_session.account}] Member({target_id}, in {group_id}) <- {message.to_text()}")
             return BotMessage.parse_obj({"messageId": result['messageId']})
 
     @bot_application_context_manager
