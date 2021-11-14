@@ -68,8 +68,10 @@ async def test(app: Cesloi, friend: Friend, result: Arpamar):
 
 ## 未来开发计划
  - ~~CommandAnalysis， 一个抽象的命令/命令参数处理器~~ (已实现)
- - TimeScheduler， 一个根据时间选择是否执行目标函数的容器
+ - ~~TimeScheduler， 一个根据时间选择是否执行目标函数的容器~~(已实现)
  - ~~PluginManager， 不局限于在一个文件中运行方法~~ (已实现)
+ - Interrupt, 中断处理
+ - Decorator，用户自定义的处理器
 
 ## 鸣谢&相关项目
 > 这些项目也很棒, 去他们的项目页看看, 点个 `Star` 以鼓励他们的开发工作, 毕竟没有他们也没有 `Cesloi`.
