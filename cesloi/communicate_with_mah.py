@@ -8,7 +8,7 @@ from pydantic import BaseModel, AnyHttpUrl, Extra
 from typing import Optional, Union, Dict, TYPE_CHECKING
 from aiohttp import ClientSession, WSMsgType
 
-from cesloi.context import enter_context
+from cesloi.utils import enter_context
 from cesloi.delegatesystem import EventDelegate
 from cesloi.logger import Logger
 from yarl import URL
@@ -108,6 +108,7 @@ class Communicator:
                 pass
         self.running_task = None
         self.bot_session.sessionKey = None
+        await self.client_session.close()
 
     async def ws_send_handle(
             self,
