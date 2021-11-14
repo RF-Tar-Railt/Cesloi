@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import traceback
 import time
 from typing import List, Union, Type, Dict, Any, Optional
@@ -52,13 +53,20 @@ class EventDelegate:
     @staticmethod
     async def get_coroutine_executable_target(target, arguments, message):
         # subscriber的command/time处理
-        real_arguments = SubscriberHandler.command_handler(target, message, arguments)
-        try:
-            result = await target.callable_target(**real_arguments)
-        except Exception as e:
-            traceback.print_exc()
-            raise e
-        return result
+        if SubscriberHandler.schedule_handler(target):
+            real_arguments = SubscriberHandler.command_handler(target, message, arguments)
+            try:
+                result = await EventDelegate.run_always_await(target.callable_target, **real_arguments)
+            except Exception as e:
+                traceback.print_exc()
+                raise e
+            return result
+
+    @staticmethod
+    async def run_always_await(callable_target, *args, **kwargs):
+        if inspect.iscoroutinefunction(callable_target):
+            return await callable_target(*args, **kwargs)
+        return callable_target(*args, **kwargs)
 
     def search_publisher(self, event: Type[TemplateEvent]):
         for publisher in self.publisher_list:
