@@ -44,7 +44,7 @@ class MessageElement(ABC, ElementModel):
         return hash((type(self),) + tuple(self.__dict__.values()))
 
     def to_serialization(self) -> str:
-        return f"[mirai:{self.type}:{JSON.dumps(self.dict(exclude={'type'}))}]"
+        return f"[mirai:{self.type}:{JSON.dumps(self.dict(exclude={'type'}))}]".replace('\n','\\n').replace('\t','\\t')
 
     @staticmethod
     def from_json(json: Dict):
@@ -132,10 +132,10 @@ class Plain(MessageElement):
         super().__init__(text=text, **kwargs)
 
     def to_text(self):
-        return self.text
+        return self.text.replace('\n','\\n').replace('\t','\\t')
 
     def to_serialization(self) -> str:
-        return self.text
+        return self.text.replace('\n','\\n').replace('\t','\\t')
 
     @staticmethod
     def from_json(json: Dict) -> "Plain":
