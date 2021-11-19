@@ -16,7 +16,7 @@
 [Cesloi暂时的文档](https://github.com/RF-Tar-Railt/Cesloi/wiki)
 
 ## 安装
-`pip install arclet-cesloi`
+`pip install cesloi`
 
 ## 简单的开始
 ### 通常版本
