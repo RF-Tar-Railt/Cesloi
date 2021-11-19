@@ -16,54 +16,58 @@
 [Cesloi暂时的文档](https://github.com/RF-Tar-Railt/Cesloi/wiki)
 
 ## 安装
-`pip install cesloi`
+`pip install arclet-cesloi`
 
 ## 简单的开始
 ### 通常版本
 ```python
-from cesloi.bot_client import Cesloi
-from cesloi.model.relation import Friend
-from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
-from cesloi.communicate_with_mah import BotSession
-from cesloi.alconna import Alconna, Arpamar
+from arclet.cesloi.bot_client import Cesloi
+from arclet.cesloi.model.relation import Friend
+from arclet.cesloi.communicate_with_mah import BotSession
+from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
 
-bot = Cesloi(bot_session=BotSession(host="YourHost", account="YourQQ", verify_key="YourVerifyKey"))
-sh = SubscriberHandler()
+bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"),
+             debug=False)
 
-@bot.register("FriendMessage")
-@sh.set(command=Alconna(command="Hello"))
+@bot.register(
+    "FriendMessage",
+    decorators=[AlconnaParser(alconna=Alconna(command="Hello"))]
+)
 async def test(app: Cesloi, friend: Friend, result: Arpamar):
+    await app.send_with(friend, "Hello, World!")
     if result.matched:
-        await app.send_with(friend, "Hello, World!")
+        await app.send_with(friend,nudge=True)
     
 bot.start()
 ```
 ### 使用插件的版本
 In `main.py` :
 ```python
-from cesloi.bot_client import Cesloi
-from cesloi.communicate_with_mah import BotSession
+from arclet.cesloi.bot_client import Cesloi
+from arclet.cesloi.communicate_with_mah import BotSession
 
 
-bot = Cesloi(bot_session=BotSession(host="http://localhost:9080", account=2582049752, verify_key="INITKEYWylsVdbr"))
+bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"), debug=False)
 bot.install_plugins("test_plugins")
 bot.start()
+
 ```
 In `test_plugins/example_plugin.py` :
 ```python
-from cesloi.bot_client import Cesloi
-from cesloi.model.relation import Friend
-from cesloi.alconna import Alconna, Arpamar
-from cesloi.plugin import Bellidin as bd
+from arclet.cesloi.bot_client import Cesloi
+from arclet.cesloi.model.relation import Friend
+from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
+from arclet.cesloi.plugin import Bellidin as bd
 
 
 @bd.model_register(
     "FriendMessage",
-    match_command=Alconna(headers=["你好", "Hello"], command="World")
+    decorators=[AlconnaParser(alconna=Alconna(command="Hello"))]
 )
 async def test(app: Cesloi, friend: Friend, result: Arpamar):
+    await app.send_with(friend, "Hello, World!")
     if result.matched:
-        await app.send_with(friend, "Hello, World!")
+        await app.send_with(friend,nudge=True)
 ```
 
 ## 未来开发计划
@@ -74,7 +78,7 @@ async def test(app: Cesloi, friend: Friend, result: Arpamar):
 
 **二期计划**
  - Interrupt, 中断处理
- - Decorator，用户自定义的处理器
+ - ~~Decorator，用户自定义的处理器~~ (已实现)
 
 ## 鸣谢&相关项目
 > 这些项目也很棒, 去他们的项目页看看, 点个 `Star` 以鼓励他们的开发工作, 毕竟没有他们也没有 `Cesloi`.
