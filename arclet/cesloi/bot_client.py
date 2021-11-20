@@ -1,7 +1,10 @@
 import asyncio
+import sys
 import time
+import traceback
 from asyncio import Task
 from typing import Optional, Union, List, Type
+
 from arclet.cesloi.utils import enter_message_send_context, UploadMethods, bot_application_context_manager, \
     upload_method
 from arclet.letoderea import EventSystem, Condition_T, TemplateDecorator, TemplateEvent
@@ -25,6 +28,7 @@ class Cesloi:
             logger: Optional[Logger] = None,
             debug: bool = False,
             enable_chat_log: bool = True,
+            use_loguru_traceback: Optional[bool] = True,
     ):
         self.event_system: EventSystem = event_system or EventSystem()
         self.bot_session: BotSession = bot_session
@@ -45,6 +49,21 @@ class Cesloi:
             self.event_system.register("GroupMessage")(self.logger_group_message)
             self.event_system.register("FriendMessage")(self.logger_friend_message)
             self.event_system.register("TempMessage")(self.logger_temp_message)
+
+        if use_loguru_traceback:
+            traceback.print_exception = self.loguru_excepthook
+            sys.excepthook = self.loguru_excepthook
+            self.event_system.loop.set_exception_handler(self.loguru_async_handler)
+
+    @staticmethod
+    def loguru_excepthook(cls, val, tb, *_, **__):
+        Logger.logger.opt(exception=(cls, val, tb)).error(f"Exception:")
+
+    @staticmethod
+    def loguru_async_handler(loop, ctx: dict):
+        Logger.logger.opt(exception=(Exception, ctx["message"], ctx["source_traceback"])).error(
+            f"Exception:"
+        )
 
     async def logger_group_message(self, event: GroupMessage):
         self.logger.info(
