@@ -1,5 +1,5 @@
-from cesloi.bot_client import Cesloi
-from cesloi.communicate_with_mah import BotSession
+from arclet.cesloi.bot_client import Cesloi
+from arclet.cesloi.communicate_with_mah import BotSession
 
 
 bot = Cesloi(bot_session=BotSession(host="http://localhost:9080", account=2582049752, verify_key="INITKEYWylsVdbr"), debug=False)
