@@ -55,7 +55,7 @@ async def test2(app: Cesloi, group: Group, target_member: Member = 'target', ope
 @es.register("NewFriendRequestEvent")
 async def test2(app: Cesloi, event: NewFriendRequestEvent):
     await event.accept()
-    await app.send_friend_message(event.fromId, MessageChain.create([Image.from_local_path("test.png")]))
+    await app.send_friend_message(event.fromId, MessageChain.create([Image(path="test.png")]))
 
 
 @tot.timing(EveryTimer().every_custom_seconds(5))
