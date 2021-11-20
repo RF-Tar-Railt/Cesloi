@@ -210,7 +210,7 @@ class Bellidin:
                                 cls.event_system.remove_publisher(pub)
                     _module_target_dict[module_name].clear()
                     module = cls._modules[module_name].module
-                    importlib.reload(module)
+                    cls._modules[module_name].module = importlib.reload(module)
                     cls.logger.debug(f"plugin: {module.__name__} is reloaded")
                     plugin_count += 1
 
