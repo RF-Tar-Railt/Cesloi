@@ -245,46 +245,48 @@ class Alconna(CommandInterface):
         _params.extend(self.dict()['options'])
 
         _head = False  # 先匹配命令头
-        _text, self.result.raw_texts[0][0] = self.result.split_by(self.separator)
-        for ch in _command_headers:
-            if re.match('^' + ch + '$', _text):
-                _head = True
-                self.result.results['header'] = re.findall('^' + ch + '$', _text)[0]
-                if self.result.results['header'] == _text:  # 如果命令头内没有正则表达式的话findall此时相当于fullmatch
-                    del self.result.results['header']
-                break
+        if self.result.raw_texts:
+            _text, self.result.raw_texts[0][0] = self.result.split_by(self.separator)
+            for ch in _command_headers:
+                if re.match('^' + ch + '$', _text):
+                    _head = True
+                    self.result.results['header'] = re.findall('^' + ch + '$', _text)[0]
+                    if self.result.results['header'] == _text:  # 如果命令头内没有正则表达式的话findall此时相当于fullmatch
+                        del self.result.results['header']
+                    break
 
-        _text_static = {}  # 统计字符串被切出来的次数
-        while _head and not all(list(map(lambda x: x[0] == "", self.result.raw_texts))):
-            try:
-                for param in _params:
-                    _text, _rest_text = self.result.split_by(self.separator)
-                    try:  # 因为sub与opt一定是dict的，所以str型的param只能是marg
-                        if isinstance(param, str) and re.match('^' + param + '$', _text):
-                            self.result.results['main_argument'] = re.findall('^' + param + '$', _text)[0]
-                            self.result.raw_texts[self.result.current_index][0] = _rest_text
-                        elif isinstance(param, dict):
-                            if param['type'] == 'OPT':
-                                self._analysis_option(param, _text, _rest_text, self.result.results['options'])
-                            elif param['type'] == 'SBC':
-                                self._analysis_subcommand(param, _text, _rest_text)
+            _text_static = {}  # 统计字符串被切出来的次数
+            while _head and not all(list(map(lambda x: x[0] == "", self.result.raw_texts))):
+                try:
+                    for param in _params:
+                        _text, _rest_text = self.result.split_by(self.separator)
+                        try:  # 因为sub与opt一定是dict的，所以str型的param只能是marg
+                            if isinstance(param, str) and re.match('^' + param + '$', _text):
+                                self.result.results['main_argument'] = re.findall('^' + param + '$', _text)[0]
+                                self.result.raw_texts[self.result.current_index][0] = _rest_text
+                            elif isinstance(param, dict):
+                                if param['type'] == 'OPT':
+                                    self._analysis_option(param, _text, _rest_text, self.result.results['options'])
+                                elif param['type'] == 'SBC':
+                                    self._analysis_subcommand(param, _text, _rest_text)
+                            else:
+                                # 既不是str也不是dict的情况下，认为param传入了一个类的Type
+                                may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+                                if type(self.result.elements[may_element_index]) is param:
+                                    self.result.results['main_argument'] = self.result.elements[may_element_index]
+                                    del self.result.elements[may_element_index]
+                        except (IndexError, KeyError):
+                            continue
+                        if _text not in _text_static:
+                            _text_static[_text] = 1
                         else:
-                            # 既不是str也不是dict的情况下，认为param传入了一个类的Type
-                            may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
-                            if type(self.result.elements[may_element_index]) is param:
-                                self.result.results['main_argument'] = self.result.elements[may_element_index]
-                                del self.result.elements[may_element_index]
-                    except (IndexError, KeyError):
-                        continue
-                    if _text not in _text_static:
-                        _text_static[_text] = 1
-                    else:
-                        _text_static[_text] += 1
-                    if _text_static[_text] > len(_params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
-                        _text_static[""] += 1
-            except (IndexError, KeyError):
-                break
-
+                            _text_static[_text] += 1
+                        if _text_static[_text] > len(_params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
+                            _text_static[""] += 1
+                except (IndexError, KeyError):
+                    break
+        else:
+            _head = True
         try:
             # 如果没写options并且marg不是str的话，匹配完命令头后是进不去上面的代码的，这里单独拿一段出来
             may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
@@ -375,6 +377,7 @@ class AlconnaParser(TemplateDecorator):
 
 
 if __name__ == "__main__":
+    from arclet.cesloi.message.element import Image
     """ping = Alconna(
         headers=["/", "!"],
         command="ping",
@@ -498,5 +501,9 @@ if __name__ == "__main__":
     print(result)
 
     msg = MessageChain.create('?')
+    result = weather.analysis_message(msg)
+    print(result)
+
+    msg = MessageChain.create(Image(path='alconna.png'))
     result = weather.analysis_message(msg)
     print(result)
