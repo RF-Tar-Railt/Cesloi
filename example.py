@@ -1,21 +1,22 @@
-from cesloi.bot_client import Cesloi
-from cesloi.event.mirai import NewFriendRequestEvent
-from cesloi.model.relation import Friend
-from cesloi.delegatesystem.entities.subsciber import SubscriberHandler
-from cesloi.message.element import Image
-from cesloi.message.messageChain import MessageChain
-from cesloi.communicate_with_mah import BotSession
-from cesloi.alconna import Alconna, Arpamar
-from cesloi.timing.schedule import Toconada, Toconado
-from cesloi.timing.timers import EveryTimer
+from arclet.cesloi.bot_client import Cesloi
+from arclet.cesloi.event.mirai import NewFriendRequestEvent
+from arclet.cesloi.model.relation import Friend
+from arclet.cesloi.message.element import Image
+from arclet.cesloi.message.messageChain import MessageChain
+from arclet.cesloi.communicate_with_mah import BotSession
+from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
+from arclet.cesloi.timing.schedule import Toconada, Toconado
+from arclet.cesloi.timing.timers import EveryTimer
 
-sh = SubscriberHandler()
-bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=123456789, verify_key="INITKEYWylsVdbr"), debug=False)
-tot = Toconada(bot.delegate)
+bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"),debug=False)
+tot = Toconada(bot.event_system)
 
 
-@bot.register("FriendMessage")
-@sh.set(command=Alconna(headers=["你好", "Hello"], command="World", main_argument=Image), time_schedule=Toconado(EveryTimer().every_minute()))
+@bot.register(
+    "FriendMessage",
+    conditions=[Toconado(EveryTimer().every_second())],
+    decorators=[AlconnaParser(alconna=Alconna(headers=["你好", "Hello"], command="World", main_argument=Image))]
+)
 async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpamar):
     print(message.to_text())
     await app.send_with(friend, nudge=True)
@@ -25,14 +26,14 @@ async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpa
 
 
 @bot.register("NewFriendRequestEvent")
-@sh.set()
 async def test1(app: Cesloi, event: NewFriendRequestEvent):
     await event.accept()
     await app.send_friend_message(event.fromId, MessageChain.create([Image.from_local_path("test.png")]))
 
 
-@tot.timing(EveryTimer().every_custom_seconds(5))
+@tot.timing(EveryTimer().every_custom_seconds(50))
 async def test2():
-    await bot.send_friend_message(9876543210, "5s!")
+    await bot.send_friend_message(3165388245, "50s!")
+
 
 bot.start()
