@@ -12,36 +12,11 @@ from yarl import URL
 from arclet.cesloi.utils import enter_context, Structured
 from arclet.letoderea import EventSystem
 from arclet.cesloi.logger import Logger
-
+from .utils import error_check
 from .event.base import MiraiEvent
 
 if TYPE_CHECKING:
     from .bot_client import Cesloi
-
-code_exceptions_mapping = {
-    1: "InvaildAuthkey  错误的verify key",
-    2: "AccountNotFound  指定的Bot不存在",
-    3: "InvaildSession  Session失效或不存在",
-    4: "UnauthorizedSession  Session未认证(未激活)",
-    5: "UnknownTarget  发送消息目标不存在(指定对象不存在)",
-    6: "FileNotFoundError  指定文件不存在，出现于发送本地图片",
-    10: "PermissionError  无操作权限，指Bot没有对应操作的限权",
-    20: "AccountMuted  Bot被禁言，指Bot当前无法向指定群发送消息",
-    30: "TooLongMessage   	消息过长",
-    400: "InvaildArgument  错误的访问，如参数错误等",
-}
-
-
-def error_check(logger, code: Union[dict, int]):
-    if isinstance(code, dict):
-        code = code.get("code")
-        exception_code = code_exceptions_mapping.get(code)
-        if exception_code:
-            logger.error(exception_code)
-    elif isinstance(code, int):
-        exception_code = code_exceptions_mapping.get(code)
-        if exception_code:
-            logger.error(exception_code)
 
 
 class BotSession(Structured):
@@ -192,11 +167,12 @@ class Communicator:
             ) as response:
                 response.raise_for_status()
                 response_data = await response.json()
-        error_check(self.logger, response_data)
         if "data" in response_data:
-            return response_data['data']
+            resp = response_data['data']
         else:
-            return response_data
+            resp = response_data
+        error_check(response_data)
+        return resp
 
     async def ws_receive_handle(self, unknown_event_data: dict):
         if "syncId" in unknown_event_data:
@@ -213,7 +189,7 @@ class Communicator:
 
     async def receive_handle(self, unknown_event_data: dict):
         received_data = unknown_event_data.get('data')
-        error_check(self.logger, received_data)
+        error_check(received_data)
         event = await self.parse_to_event(received_data)
         with enter_context(bot=self.bot, event_i=event):
             self.event_system.event_spread(event)
@@ -252,7 +228,7 @@ class Communicator:
                         if not received_data['syncId']:
                             data = received_data['data']
                             if data['code']:
-                                error_check(self.logger, data)
+                                error_check(data)
 
                             else:
                                 if not self.bot_session.sessionKey:
