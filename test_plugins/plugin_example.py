@@ -22,4 +22,4 @@ async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpa
 @bd.model_register("NewFriendRequestEvent")
 async def test1(app: Cesloi, event: NewFriendRequestEvent):
     await event.accept()
-    await app.send_friend_message(event.fromId, MessageChain.create([Image.from_local_path("test.png")]))
+    await app.send_friend_message(event.fromId, MessageChain.create([Image(path="test.png")]))
