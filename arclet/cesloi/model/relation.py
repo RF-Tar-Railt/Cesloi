@@ -67,11 +67,20 @@ class GroupConfig(BaseModel):
 class MemberInfo(BaseModel):
     """描述群组成员的各项功能的设置（需要有相关限权）."""
 
-    name: str = ""
+    id: int
+    name: str = Field("", alias="memberName")
     specialTitle: str = ""
+    permission: Permission
+    joinTimestamp: Optional[int] = None
+    lastSpeakTimestamp: Optional[int] = None
+    muteTimeRemaining: Optional[int] = None
+    group: Group
 
     class Config:
         allow_mutation = True
+
+    def avatar(self):
+        return f'https://q4.qlogo.cn/g?b=qq&nk={self.id}&s=140'
 
 
 class Client(BaseModel):
