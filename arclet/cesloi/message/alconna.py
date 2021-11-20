@@ -276,7 +276,7 @@ class Alconna(CommandInterface):
                                     self.result.results['main_argument'] = self.result.elements[may_element_index]
                                     del self.result.elements[may_element_index]
                         except (IndexError, KeyError):
-                            continue
+                            pass
                         if _text not in _text_static:
                             _text_static[_text] = 1
                         else:
