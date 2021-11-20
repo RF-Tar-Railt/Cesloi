@@ -1,15 +1,15 @@
-from cesloi.bot_client import Cesloi
-from cesloi.event.mirai import NewFriendRequestEvent
-from cesloi.model.relation import Friend
-from cesloi.message.element import Image
-from cesloi.message.messageChain import MessageChain
-from cesloi.alconna import Alconna, Arpamar
-from cesloi.plugin import Bellidin as bd
+from arclet.cesloi.bot_client import Cesloi
+from arclet.cesloi.event.mirai import NewFriendRequestEvent
+from arclet.cesloi.model.relation import Friend
+from arclet.cesloi.message.element import Image
+from arclet.cesloi.message.messageChain import MessageChain
+from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
+from arclet.cesloi.plugin import Bellidin as bd
 
 
 @bd.model_register(
     "FriendMessage",
-    match_command=Alconna(headers=["你好", "Hello"], command="World", main_argument=Image)
+    decorators=[AlconnaParser(alconna=Alconna(headers=["你好", "Hello"], command="World", main_argument=Image))]
 )
 async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpamar):
     print(message.to_text())
