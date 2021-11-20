@@ -656,7 +656,7 @@ class Cesloi:
         if isinstance(member, Member) and not group:
             group = member.group
         result = await self.communicator.send_handle(
-            "groupConfig",
+            "memberInfo",
             "get",
             {
                 "sessionKey": self.bot_session.sessionKey,
@@ -702,7 +702,7 @@ class Cesloi:
                 "sessionKey": self.bot_session.sessionKey,
                 "target": group.id if isinstance(group, Group) else group,
                 "memberId": member.id if isinstance(member, Member) else member,
-                "info": member_info.dict(exclude_unset=True, exclude_none=True)
+                "info": {'name': member_info.name, 'specialTitle': member_info.specialTitle}
             }
         )
 
