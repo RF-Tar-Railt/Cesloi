@@ -2,8 +2,10 @@ import functools
 from contextvars import ContextVar
 from contextlib import contextmanager
 from enum import Enum
-from typing import Callable, Any, Union, TYPE_CHECKING
+from typing import Callable, Any, Union, TYPE_CHECKING, Dict, Type
+
 from pydantic.main import BaseModel, BaseConfig, Extra
+
 if TYPE_CHECKING:
     from pydantic.typing import AbstractSetIntStr, DictStrAny, MappingIntStrAny
 
@@ -12,6 +14,46 @@ event = ContextVar("event")
 event_loop = ContextVar("event_loop")
 event_system = ContextVar("event_system")
 upload_method = ContextVar("upload_method")
+
+from .exceptions import (
+    AccountMuted,
+    AccountNotFound,
+    InvalidArgument,
+    InvalidSession,
+    InvalidVerifyKey,
+    MessageTooLong,
+    UnknownError,
+    UnknownTarget,
+    UnVerifiedSession,
+)
+
+code_exceptions_mapping: Dict[int, Type[Exception]] = {
+    1: InvalidVerifyKey,
+    2: AccountNotFound,
+    3: InvalidSession,
+    4: UnVerifiedSession,
+    5: UnknownTarget,
+    6: FileNotFoundError,
+    10: PermissionError,
+    20: AccountMuted,
+    30: MessageTooLong,
+    400: InvalidArgument
+}
+
+
+def error_check(code: Union[dict, int]):
+    origin = code
+    if isinstance(code, dict):
+        code = code.get("code")
+    else:
+        code = code
+    if not isinstance(code, int) or code == 200 or code == 0:
+        return
+    exc_cls = code_exceptions_mapping.get(code)
+    if exc_cls:
+        raise exc_cls(exc_cls.__doc__)
+    else:
+        raise UnknownError(f"{origin}")
 
 
 class ContextModel:
@@ -45,15 +87,15 @@ class Structured(BaseModel):
     """
 
     def dict(
-        self,
-        *,
-        include: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
-        exclude: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
-        by_alias: bool = False,
-        skip_defaults: bool = None,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False,
+            self,
+            *,
+            include: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
+            exclude: Union["AbstractSetIntStr", "MappingIntStrAny"] = None,
+            by_alias: bool = False,
+            skip_defaults: bool = None,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
     ) -> "DictStrAny":
         return super().dict(
             include=include,
