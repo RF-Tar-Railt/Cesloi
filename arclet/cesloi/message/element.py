@@ -4,10 +4,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, Optional, TYPE_CHECKING, Union, List
 from base64 import b64decode, b64encode
-from ..utils import bot_application, Structured
+from ..utils import Structured
 import aiohttp
 from pydantic import validator, Field
-from abc import ABC, abstractmethod
+from abc import ABC
 
 if TYPE_CHECKING:
     from .messageChain import MessageChain
@@ -33,7 +33,6 @@ class MessageElement(ABC, Structured):
 
 class MediaElement(MessageElement):
     url: Optional[str] = None
-    path: Optional[Union[Path, str]] = None
     base64: Optional[str] = None
 
     async def get_bytes(self) -> bytes:
@@ -42,25 +41,22 @@ class MediaElement(MessageElement):
                 if response.status != 200:
                     raise ConnectionError(response.status, await response.text())
                 data = await response.content.readexactly(response.content_length)
-                self.base64 = str(b64encode(data))
+                self.base64 = str(b64encode(data), encoding='utf-8')
                 return data
         if self.base64:
             return b64decode(self.base64)
 
-    @staticmethod
-    @abstractmethod
-    def from_local_path(path: Union[Path, str]):
-        pass
-
-    @classmethod
-    @abstractmethod
-    def from_url(cls, path: str):
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def from_bytes(data: bytes):
-        pass
+    def to_sendable(self, path: Optional[Union[Path, str]] = None, data_bytes: Optional[bytes] = None):
+        if sum([bool(self.url), bool(path), bool(self.base64)]) > 1:
+            raise ValueError("Too many binary initializers!")
+        if path:
+            if isinstance(path, str):
+                path = Path(path)
+            if not path.exists():
+                raise FileNotFoundError(f"{path} is not exist!")
+            self.base64 = str(b64encode(path.read_bytes()), encoding='utf-8')
+        elif data_bytes:
+            self.base64 = str(b64encode(data_bytes), encoding='utf-8')
 
 
 class Source(MessageElement):
@@ -135,7 +131,7 @@ class At(MessageElement):
         super().__init__(target=target, **kwargs)
 
     def to_text(self) -> str:
-        return f'@{str(self.display)}' if self.display else f"@{self.target}"
+        return f"@{str(self.display)}" if self.display else f"@{self.target}"
 
     @staticmethod
     def from_json(json: Dict) -> "At":
@@ -290,7 +286,6 @@ class Image(MediaElement):
     type = "Image"
     imageId: Optional[str] = None
     url: Optional[str] = None
-    path: Optional[Union[Path, str]] = None
     base64: Optional[str] = None
 
     def __init__(
@@ -299,15 +294,16 @@ class Image(MediaElement):
             url: Optional[str] = None,
             path: Optional[Union[Path, str]] = None,
             base64: Optional[str] = None,
+            data_bytes: Optional[bytes] = None,
             **kwargs
     ):
         super().__init__(
             imageId=imageId,
-            path=path,
             url=url,
             base64=base64,
             **kwargs
         )
+        self.to_sendable(path, data_bytes)
 
     def to_text(self) -> str:
         return "[图片]"
@@ -315,25 +311,6 @@ class Image(MediaElement):
     @staticmethod
     def from_json(json: Dict):
         return Image.parse_obj(json)
-
-    @staticmethod
-    def from_local_path(path: Union[Path, str]):
-        if isinstance(path, str):
-            path = Path(path)
-        bot = bot_application.get()
-        if not path.exists():
-            raise FileNotFoundError(path)
-        return bot.upload_image(path.read_bytes())
-
-    @classmethod
-    def from_url(cls, url: str):
-        bot = bot_application.get()
-        return bot.upload_image(cls(url=url).get_bytes())
-
-    @staticmethod
-    def from_bytes(data: bytes):
-        bot = bot_application.get()
-        return bot.upload_image(data)
 
 
 class FlashImage(Image):
@@ -346,15 +323,16 @@ class FlashImage(Image):
             url: Optional[str] = None,
             path: Optional[Union[Path, str]] = None,
             base64: Optional[str] = None,
+            data_bytes: Optional[bytes] = None,
             **kwargs
     ):
         super().__init__(
             imageId=imageId,
-            path=path,
             url=url,
             base64=base64,
             **kwargs
         )
+        self.to_sendable(path, data_bytes)
 
     def to_text(self) -> str:
         return "[闪照]"
@@ -362,25 +340,6 @@ class FlashImage(Image):
     @staticmethod
     def from_json(json: Dict):
         return FlashImage.parse_obj(json)
-
-    @staticmethod
-    def from_local_path(path: Union[Path, str]):
-        if isinstance(path, str):
-            path = Path(path)
-        bot = bot_application.get()
-        if not path.exists():
-            raise FileNotFoundError(path)
-        return bot.upload_image(path.read_bytes(), is_flash=True)
-
-    @classmethod
-    def from_url(cls, url: str):
-        bot = bot_application.get()
-        return bot.upload_image(cls(url=url).get_bytes(), is_flash=True)
-
-    @staticmethod
-    def from_bytes(data: bytes):
-        bot = bot_application.get()
-        return bot.upload_image(data, is_flash=True)
 
 
 class Voice(MediaElement):
@@ -394,15 +353,16 @@ class Voice(MediaElement):
             url: Optional[str] = None,
             path: Optional[Union[Path, str]] = None,
             base64: Optional[str] = None,
+            data_bytes: Optional[bytes] = None,
             **kwargs
     ):
         super().__init__(
             voiceId=voiceId,
-            path=path,
             url=url,
             base64=base64,
             **kwargs
         )
+        self.to_sendable(path, data_bytes)
 
     def to_text(self) -> str:
         return "[语音]"
@@ -410,25 +370,6 @@ class Voice(MediaElement):
     @staticmethod
     def from_json(json: Dict):
         return Voice.parse_obj(json)
-
-    @staticmethod
-    def from_local_path(path: Union[Path, str]):
-        if isinstance(path, str):
-            path = Path(path)
-        bot = bot_application.get()
-        if not path.exists():
-            raise FileNotFoundError(path)
-        return bot.upload_voice(path.read_bytes())
-
-    @classmethod
-    def from_url(cls, url: str):
-        bot = bot_application.get()
-        return bot.upload_voice(cls(url=url).get_bytes())
-
-    @staticmethod
-    def from_bytes(data: bytes):
-        bot = bot_application.get()
-        return bot.upload_voice(data)
 
 
 class MusicShare(MessageElement):
