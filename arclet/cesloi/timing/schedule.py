@@ -61,18 +61,12 @@ class Toconado(TemplateCondition):
         self.last_run = None
 
     def judge(self) -> bool:
-        print(1)
         if not self.last_run:
-            print(2)
             self.last_run = datetime.now()
-            print(3)
             return True
         for interval in self.timer.get_delta():
-            print(4)
             now = datetime.now()
             if self.last_run + (interval - now) <= now:
-                print(5)
                 self.last_run = now.replace(microsecond=0)
                 return True
-            print(6)
             return False
