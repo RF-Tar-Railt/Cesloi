@@ -3,7 +3,7 @@ from pydantic import BaseModel
 import re
 from arclet.cesloi.message.element import MessageElement
 from arclet.cesloi.message.messageChain import MessageChain
-from arclet.letoderea.entities.decorator import TemplateDecorator
+from arclet.letoderea.entities.decorator import EventDecorator
 from arclet.letoderea.utils import ArgumentPackage
 
 AnyIP = r"(\d+)\.(\d+)\.(\d+)\.(\d+)"
@@ -275,14 +275,13 @@ class Alconna(CommandInterface):
                                 if type(self.result.elements[may_element_index]) is param:
                                     self.result.results['main_argument'] = self.result.elements[may_element_index]
                                     del self.result.elements[may_element_index]
-                        except (IndexError, KeyError):
-                            pass
-                        if _text not in _text_static:
-                            _text_static[_text] = 1
-                        else:
-                            _text_static[_text] += 1
-                        if _text_static[_text] > len(_params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
-                            _text_static[""] += 1
+                        finally:
+                            if _text not in _text_static:
+                                _text_static[_text] = 1
+                            else:
+                                _text_static[_text] += 1
+                            if _text_static[_text] > len(_params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
+                                _text_static[""] += 1
                 except (IndexError, KeyError):
                     break
         else:
@@ -359,21 +358,18 @@ class Alconna(CommandInterface):
         extra = "allow"
 
 
-class AlconnaParser(TemplateDecorator):
+class AlconnaParser(EventDecorator):
     """
     Alconna的装饰器形式
     """
-    __disable__ = "after_parser"
 
     def __init__(self, *, alconna: Alconna):
-        super().__init__(target_type=MessageChain, supplement_type=Arpamar)
+        super().__init__(target_type=MessageChain)
         self.alconna = alconna
 
-    def before_parser(self, target_argument: ArgumentPackage) -> Arpamar:
+    def supply(self, target_argument: ArgumentPackage) -> Arpamar:
         if target_argument.annotation == MessageChain:
             return self.alconna.analysis_message(target_argument.value)
-
-
 
 
 if __name__ == "__main__":
