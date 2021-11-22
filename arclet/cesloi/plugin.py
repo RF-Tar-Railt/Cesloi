@@ -1,12 +1,11 @@
 import os
+import sys
+import time
 from types import ModuleType
 from typing import Optional, Dict, Union, Type, Callable, List
 import importlib
 from ..letoderea import EventSystem, TemplateEvent, EventDelegate, Publisher, Subscriber, Condition_T, TemplateDecorator
 from .logger import Logger
-
-
-_module_target_dict: Dict[str, list] = {}
 
 
 class TemplatePlugin:
@@ -34,6 +33,7 @@ class Bellidin:
     """
     ignore = ["__init__.py", "__pycache__"]
     _modules: Dict[str, "TemplatePlugin"] = {}
+    _module_target_dict: Dict[str, list] = {}
     current_module_name: str
     event_system: EventSystem
     logger: Logger.logger
@@ -76,13 +76,28 @@ class Bellidin:
                         break
                 else:
                     cls.event_system.publisher_list.append(Publisher(conditions, _event_handler))
-            if cls.current_module_name not in _module_target_dict:
-                _module_target_dict[cls.current_module_name] = [[event, subscriber]]
+                    print(cls.event_system.publisher_list)
+            if cls.current_module_name not in cls._module_target_dict:
+                cls._module_target_dict[cls.current_module_name] = [[event, subscriber]]
             else:
-                _module_target_dict[cls.current_module_name].append([event, subscriber])
+                cls._module_target_dict[cls.current_module_name].append([event, subscriber])
             return func
 
         return register_wrapper
+
+    @classmethod
+    def _uninstall_subscriber(cls, module_name):
+        if cls._module_target_dict.get(module_name):
+            targets = cls._module_target_dict[module_name]
+            for event_type, subscriber in targets:
+                t_publishers = cls.event_system.get_publisher(event_type)
+                for pub in t_publishers:
+                    pub.internal_delegate[event_type.__name__].subscribers.remove(subscriber)
+                    if not pub.internal_delegate[event_type.__name__].subscribers:
+                        pub.remove_delegate(event_type)
+                        if not pub.internal_delegate:
+                            cls.event_system.remove_publisher(pub)
+            del cls._module_target_dict[module_name]
 
     @classmethod
     def set_bellidin(cls, event_system, logger):
@@ -100,8 +115,9 @@ class Bellidin:
         try:
             cls.current_module_name = modules_name
             module = importlib.import_module(modules_name, modules_name)
+
             name = getattr(module, '__name__', None)
-            usage = getattr(module, '__usage', None)
+            usage = getattr(module, '__usage__', None)
             cls._modules[modules_name] = TemplatePlugin(module, name, usage)
             cls.logger.debug(f"plugin: {module.__name__} is installed")
             return True
@@ -117,10 +133,10 @@ class Bellidin:
             if module in cls.ignore:
                 continue
             if os.path.isdir(module):
-                cls.install_plugin(f"{plugin_dir.replace('/','.')}.{module}")
+                cls.install_plugin(f"{plugin_dir.replace('/', '.')}.{module}")
                 plugin_count += 1
             else:
-                cls.install_plugin(f"{plugin_dir.replace('/','.')}.{module.split('.')[0]}")
+                cls.install_plugin(f"{plugin_dir.replace('/', '.')}.{module.split('.')[0]}")
                 plugin_count += 1
         cls.logger.info(f"{plugin_count} plugin have been installed")
         return plugin_count
@@ -132,16 +148,14 @@ class Bellidin:
     @classmethod
     def uninstall_plugins(cls, *args, **kwargs):
         plugin_count = 0
-        for module_name in cls._modules:
+        _names = list(cls._modules.keys())
+        for file in os.listdir(cls.plugins_dir):
+            if file == "__pycache__":
+                for pyc in os.listdir(cls.plugins_dir + "/__pycache__"):
+                    os.remove(cls.plugins_dir + "/__pycache__/" + pyc)
+        for module_name in _names:
             cls.logger.debug(f"plugin: {module_name} uninstalling")
-            targets = _module_target_dict[module_name]
-            for target in targets:
-                t_publishers = cls.event_system.get_publisher(target[0])
-                for pub in t_publishers:
-                    pub.remove_delegate(target[0])
-                    if not pub.internal_delegate:
-                        cls.event_system.remove_publisher(pub)
-            _module_target_dict[module_name].clear()
+            cls._uninstall_subscriber(module_name)
             module = cls._modules[module_name].module
             if hasattr(module, "__end__"):
                 try:
@@ -154,7 +168,11 @@ class Bellidin:
                 else:
                     cls.logger.debug(f"plugin: {module.__name__} is uninstalled")
                     module.is_close = True
+            del cls._modules[module_name]
             plugin_count += 1
+            if sys.modules.get(module_name):
+                del sys.modules[module_name]
+
         cls._modules.clear()
         cls.logger.info(f"{plugin_count} plugins have been uninstalled successfully")
         return plugin_count
@@ -163,13 +181,7 @@ class Bellidin:
     def uninstall_plugin(cls, module_name: str, *args, **kwargs):
         try:
             if module_name in cls._modules:
-                targets = _module_target_dict[module_name]
-                for target in targets:
-                    t_publishers = cls.event_system.get_publisher(target[0])
-                    for pub in t_publishers:
-                        pub.remove_delegate(target[0])
-                        if not pub.internal_delegate:
-                            cls.event_system.remove_publisher(pub)
+                cls._uninstall_subscriber(module_name)
                 module = cls._modules[module_name].module
                 if hasattr(module, "__end__"):
                     try:
@@ -183,6 +195,8 @@ class Bellidin:
                         cls.logger.debug(f"plugin: {module.__name__} is uninstalled")
                         module.is_close = True
                 del cls._modules[module_name]
+                if sys.modules.get(module_name):
+                    del sys.modules[module_name]
             else:
                 raise ValueError(f"No such plugin named {module_name}")
         except Exception as e:
@@ -200,18 +214,13 @@ class Bellidin:
             else:
                 cls.logger.info(f"reload plugins at \"./{cls.plugins_dir}\"")
                 plugin_count = 0
-                for module_name in cls._modules:
-                    targets = _module_target_dict[module_name]
-                    for target in targets:
-                        t_publishers = cls.event_system.get_publisher(target[0])
-                        for pub in t_publishers:
-                            pub.remove_delegate(target[0])
-                            if not pub.internal_delegate:
-                                cls.event_system.remove_publisher(pub)
-                    _module_target_dict[module_name].clear()
-                    module = cls._modules[module_name].module
-                    cls._modules[module_name].module = importlib.reload(module)
-                    cls.logger.debug(f"plugin: {module.__name__} is reloaded")
+                _names = list(cls._modules.keys())
+                for module_name in _names:
+                    cls._uninstall_subscriber(module_name)
+                    cls.current_module_name = module_name
+                    importlib.invalidate_caches()
+                    cls._modules[module_name].module = importlib.reload(cls._modules[module_name].module)
+                    cls.logger.debug(f"plugin: {cls._modules[module_name].module.__name__} is reloaded")
                     plugin_count += 1
 
                 cls.logger.info(f"{plugin_count} plugins have been reload successfully")
