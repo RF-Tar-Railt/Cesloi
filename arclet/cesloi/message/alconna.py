@@ -95,7 +95,7 @@ class Arpamar(BaseModel):
 
     def analysis_result(self) -> None:
         for k, v in self.results['options'].items():
-            k = k.replace("-", "").replace("=", "").replace("*", "").replace("_", "")
+            k = re.sub(r"`~\?/\.,<>;':\"\|\\!@#\$%\^&*\(\)_+-=}{\[]", "", k)
             self.__setattr__(k, v)
 
     def get(self, name: str) -> dict:
@@ -176,6 +176,8 @@ class Alconna(CommandInterface):
             options=options or [],
             main_argument=main_argument or "",
         )
+        self._params = [self.main_argument]  # params是除开命令头的剩下部分
+        self._params.extend(self.dict()['options'])
 
     @staticmethod
     def split_once(text: str, separate: str):  # 相当于另类的pop
@@ -183,7 +185,7 @@ class Alconna(CommandInterface):
         quotation_stack = []
         is_split = True
         for char in text:
-            if re.match('[\'|\"]', char):  # 遇到引号括起来的部分跳过分隔
+            if char in "'\"":  # 遇到引号括起来的部分跳过分隔
                 if not quotation_stack:
                     is_split = False
                     quotation_stack.append(char)
@@ -203,7 +205,7 @@ class Alconna(CommandInterface):
         while all([text, max_split]):
             out_text = ""
             for char in text:
-                if re.match('[\'|\"]', char):  # 遇到引号括起来的部分跳过分隔
+                if char in "'\"":  # 遇到引号括起来的部分跳过分隔
                     if not quotation_stack:
                         is_split = False
                         quotation_stack.append(char)
@@ -241,46 +243,51 @@ class Alconna(CommandInterface):
 
         if self.main_argument != "":
             self.result.need_marg = True  # 如果need_marg那么match的元素里一定得有main_argument
-        _params = [self.main_argument]  # params是除开命令头的剩下部分
-        _params.extend(self.dict()['options'])
 
         _head = False  # 先匹配命令头
         if self.result.raw_texts:
             _text, self.result.raw_texts[0][0] = self.result.split_by(self.separator)
             for ch in _command_headers:
-                if re.match('^' + ch + '$', _text):
+                _head_find = re.findall('^' + ch + '$', _text)
+                if _head_find:
                     _head = True
-                    self.result.results['header'] = re.findall('^' + ch + '$', _text)[0]
+                    self.result.results['header'] = _head_find[0]
                     if self.result.results['header'] == _text:  # 如果命令头内没有正则表达式的话findall此时相当于fullmatch
                         del self.result.results['header']
                     break
 
             _text_static = {}  # 统计字符串被切出来的次数
-            while _head and not all(list(map(lambda x: x[0] == "", self.result.raw_texts))):
+            while _head and not all([t[0] == "" for t in self.result.raw_texts]):
                 try:
-                    for param in _params:
-                        _text, _rest_text = self.result.split_by(self.separator)
+                    _text, _rest_text = self.result.split_by(self.separator)
+                    for param in self._params:
                         try:  # 因为sub与opt一定是dict的，所以str型的param只能是marg
-                            if isinstance(param, str) and re.match('^' + param + '$', _text):
-                                self.result.results['main_argument'] = re.findall('^' + param + '$', _text)[0]
-                                self.result.raw_texts[self.result.current_index][0] = _rest_text
+                            if isinstance(param, str):
+                                _param_find = re.findall('^' + param + '$', _text)
+                                if _param_find:
+                                    self.result.results['main_argument'] = _param_find[0]
+                                    self.result.raw_texts[self.result.current_index][0] = _rest_text
                             elif isinstance(param, dict):
-                                if param['type'] == 'OPT':
-                                    self._analysis_option(param, _text, _rest_text, self.result.results['options'])
-                                elif param['type'] == 'SBC':
-                                    self._analysis_subcommand(param, _text, _rest_text)
+                                if param['type'] == 'OPT' and self._analysis_option(
+                                        param, _text, _rest_text, self.result.results['options']):
+                                    del _text_static[_text]
+                                elif param['type'] == 'SBC' and self._analysis_subcommand(
+                                        param, _text, _rest_text):
+                                    del _text_static[_text]
                             else:
                                 # 既不是str也不是dict的情况下，认为param传入了一个类的Type
                                 may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
                                 if type(self.result.elements[may_element_index]) is param:
                                     self.result.results['main_argument'] = self.result.elements[may_element_index]
                                     del self.result.elements[may_element_index]
+                        except KeyError:
+                            pass
                         finally:
                             if _text not in _text_static:
                                 _text_static[_text] = 1
                             else:
                                 _text_static[_text] += 1
-                            if _text_static[_text] > len(_params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
+                            if _text_static[_text] > len(self._params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
                                 _text_static[""] += 1
                 except (IndexError, KeyError):
                     break
@@ -289,13 +296,13 @@ class Alconna(CommandInterface):
         try:
             # 如果没写options并且marg不是str的话，匹配完命令头后是进不去上面的代码的，这里单独拿一段出来
             may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
-            if self.result.elements and type(self.result.elements[may_element_index]) is _params[0]:
+            if self.result.elements and type(self.result.elements[may_element_index]) is self._params[0]:
                 self.result.results['main_argument'] = self.result.elements[may_element_index]
                 del self.result.elements[may_element_index]
         except (IndexError, KeyError):
             pass
 
-        if _head and len(self.result.elements) == 0 and all(list(map(lambda x: x[0] == "", self.result.raw_texts))) \
+        if _head and len(self.result.elements) == 0 and all([t[0] == "" for t in self.result.raw_texts]) \
                 and (not self.result.need_marg or (self.result.need_marg and 'main_argument' in self.result.results)):
             self.result.matched = True
             self.result.analysis_result()
@@ -310,30 +317,34 @@ class Alconna(CommandInterface):
         name, may_arg = self.split_once(text, sep)
         if sep == self.separator:  # 在sep等于separator的情况下name是被提前切出来的
             name = text
-        if re.match('^' + opt + '$', name):  # 先匹配选项名称
-            self.result.raw_texts[self.result.current_index][0] = rest_text
-            if arg == {}:
-                option_dict[text] = text
+        if not re.match('^' + opt + '$', name):  # 先匹配选项名称
+            return False
+        self.result.raw_texts[self.result.current_index][0] = rest_text
+        if arg == {}:
+            option_dict[text] = text
+            return True
+        for k, v in arg.items():
+            if isinstance(v, str):
+                if sep == self.separator:
+                    may_arg, rest_text = self.result.split_by(sep)
+                if not re.match('^' + v + '$', may_arg):
+                    return False
+                if name not in option_dict:
+                    option_dict[name] = {k: may_arg}
+                else:
+                    option_dict[name][k] = may_arg
+                if sep == self.separator:
+                    self.result.raw_texts[self.result.current_index][0] = rest_text
+                return True
             else:
-                for k, v in arg.items():
-                    if isinstance(v, str):
-                        if sep == self.separator:
-                            may_arg, rest_text = self.result.split_by(sep)
-                        if re.match('^' + v + '$', may_arg):
-                            if name not in option_dict:
-                                option_dict[name] = {k: may_arg}
-                            else:
-                                option_dict[name][k] = may_arg
-                            if sep == self.separator:
-                                self.result.raw_texts[self.result.current_index][0] = rest_text
-                    else:
-                        may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
-                        if type(self.result.elements[may_element_index]) is v:
-                            if name not in option_dict:
-                                option_dict[name] = {k: self.result.elements[may_element_index]}
-                            else:
-                                option_dict[name][k] = self.result.elements[may_element_index]
-                            del self.result.elements[may_element_index]
+                may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+                if type(self.result.elements[may_element_index]) is not v:
+                    return False
+                if name not in option_dict:
+                    option_dict[name] = {k: self.result.elements[may_element_index]}
+                option_dict[name][k] = self.result.elements[may_element_index]
+                del self.result.elements[may_element_index]
+                return True
 
     def _analysis_subcommand(self, param, text, rest_text):
         subcommand = {}
@@ -342,17 +353,19 @@ class Alconna(CommandInterface):
         name, may_text = self.split_once(text, sep)
         if sep == self.separator:
             name = text
-        if re.match('^' + command + '$', name):
-            self.result.raw_texts[self.result.current_index][0] = rest_text
-            for option in param['Options']:
-                try:
-                    if sep == self.separator:
-                        may_text, rest_text = self.result.split_by(sep)
-                    self._analysis_option(option, may_text, rest_text, subcommand)
-                except (IndexError, KeyError):
-                    continue
-            if name not in self.result.results['options']:
-                self.result.results['options'][name] = subcommand
+        if not re.match('^' + command + '$', name):
+            return False
+        self.result.raw_texts[self.result.current_index][0] = rest_text
+        for option in param['Options']:
+            try:
+                if sep == self.separator:
+                    may_text, rest_text = self.result.split_by(sep)
+                self._analysis_option(option, may_text, rest_text, subcommand)
+            except (IndexError, KeyError):
+                continue
+        if name not in self.result.results['options']:
+            self.result.results['options'][name] = subcommand
+        return True
 
     class Config:
         extra = "allow"
@@ -373,7 +386,8 @@ class AlconnaParser(EventDecorator):
 
 
 if __name__ == "__main__":
-    from arclet.cesloi.message.element import Image
+    from arclet.cesloi.message.element import At
+
     """ping = Alconna(
         headers=["/", "!"],
         command="ping",
@@ -400,7 +414,7 @@ if __name__ == "__main__":
     print(msg2)
     result = ping.analysis_message(msg2)
     print(result.matched)
-
+    """
     aaa = Alconna(
         headers=[".", "!"],
         command="摸一摸",
@@ -408,8 +422,8 @@ if __name__ == "__main__":
     )
     msg = MessageChain.create(".摸一摸", At(123))
     print(msg)
-    print(aaa.analysis_message(msg).main_argument)
-
+    print(aaa.analysis_message(msg).matched)
+    """
     img = Alconna(
         headers=[".", "。"],
         command="Image",
@@ -452,7 +466,7 @@ if __name__ == "__main__":
     print(msg)
     result = ddd.analysis_message(msg)
     print(result.get('sum'))
-
+    """
     ddd = Alconna(
         headers=[""],
         command="点歌",
@@ -471,10 +485,9 @@ if __name__ == "__main__":
         command=f"RD{AnyDigit}?=={AnyDigit}"
     )
     msg = "RD100==36"
-    print(msg)
     result = eee.analysis_message(msg)
     print(result.results)
-
+    """
     print(Alconna.split("Hello! \"what is it?\" aaa bbb"))"""
 
     weather = Alconna(
@@ -484,12 +497,8 @@ if __name__ == "__main__":
             Option("时间", days=AnyStr).separate('=')
         ]
     )
-    eee = Alconna(
-        headers=[""],
-        command=f"RD{AnyDigit}?=={AnyDigit}"
-    )
     msg = MessageChain.create('渊白桂林天气 时间=明天')
-    result = eee.analysis_message(msg)
+    result = weather.analysis_message(msg)
     print(result)
 
     msg = MessageChain.create('渊白桂林天气')
@@ -497,9 +506,5 @@ if __name__ == "__main__":
     print(result)
 
     msg = MessageChain.create('?')
-    result = weather.analysis_message(msg)
-    print(result)
-
-    msg = MessageChain.create(Image(path='alconna.png'))
     result = weather.analysis_message(msg)
     print(result)
