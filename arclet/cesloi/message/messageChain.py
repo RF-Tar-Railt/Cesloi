@@ -85,11 +85,14 @@ class MessageChain(Structured):
         if isinstance(element_type, str):
             element_type = MessageChain.search_element(element_type)
         for i, v in enumerate(self.__root__):
+            if type(v) in (Source, Quote):
+                continue
             if type(v) is not element_type:
                 return False
         return True
 
     def findall(self, element_type: Union[str, Type[MessageElement]]) -> List[MessageElement]:
+        """返回消息链内可能的所有指定元素"""
         if isinstance(element_type, str):
             element_type = MessageChain.search_element(element_type)
         return [i for i in self.__root__ if type(i) is element_type]
