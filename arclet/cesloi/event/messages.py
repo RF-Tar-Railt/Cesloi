@@ -1,6 +1,5 @@
-from typing import Union
 from .base import MiraiEvent
-from arclet.cesloi.model.relation import Client, Friend, Member
+from arclet.cesloi.model.relation import Client, Friend, Member, Stranger, Sender
 from arclet.cesloi.message.messageChain import MessageChain
 from .inserter import ApplicationInserter, EventInserter
 
@@ -8,7 +7,7 @@ from .inserter import ApplicationInserter, EventInserter
 class Message(MiraiEvent):
     type: str
     messageChain: MessageChain
-    sender: Union[Friend, Member, Client]
+    sender: Sender
 
     def __eq__(self, other: "Message"):
         return self.messageChain.to_text() == other
@@ -18,7 +17,7 @@ class Message(MiraiEvent):
             ApplicationInserter,
             EventInserter,
             MessageChain=self.messageChain,
-            sender=self.sender
+            Sender=self.sender
         )
 
 
@@ -65,14 +64,14 @@ class TempMessage(Message):
 
 class StrangerMessage(Message):
     type: str = "StrangerMessage"
-    sender: Friend
+    sender: Stranger
 
     def get_params(self):
         return self.param_export(
             ApplicationInserter,
             EventInserter,
             MessageChain=self.messageChain,
-            Friend=self.sender
+            Stranger=self.sender
         )
 
 
