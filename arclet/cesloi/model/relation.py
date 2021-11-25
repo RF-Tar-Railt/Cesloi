@@ -1,6 +1,7 @@
 from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, Field
+from typing import Optional, Union
+from ..utils import Structured
+from pydantic import Field
 
 
 class Permission(Enum):
@@ -14,12 +15,12 @@ class Permission(Enum):
 class Equipment(Enum):
     """客户端的设备名称信息"""
 
-    Mobile = "MOBILE"  # 手机
+    Mobile = "MOBILE"  # 移动端
     Windows = "WINDOWS"  # win电脑
     MacOS = "MACOS"  # mac电脑
 
 
-class Friend(BaseModel):
+class Friend(Structured):
     """好友的信息."""
 
     id: int
@@ -27,7 +28,14 @@ class Friend(BaseModel):
     remark: Optional[str]
 
 
-class Group(BaseModel):
+class Stranger(Structured):
+    """描述 Tencent QQ 中的陌生人."""
+    id: int
+    nickname: str
+    remark: str
+
+
+class Group(Structured):
     id: int
     name: str
     accountPerm: Permission = Field(..., alias="permission")
@@ -36,7 +44,7 @@ class Group(BaseModel):
         return f'https://p.qlogo.cn/gh/{self.id}/{self.id}'
 
 
-class Member(BaseModel):
+class Member(Structured):
     id: int
     name: str = Field(..., alias="memberName")
     permission: Permission
@@ -50,7 +58,7 @@ class Member(BaseModel):
         return f'https://q4.qlogo.cn/g?b=qq&nk={self.id}&s=140'
 
 
-class GroupConfig(BaseModel):
+class GroupConfig(Structured):
     """描述群组各项功能的设置."""
 
     name: str
@@ -64,7 +72,7 @@ class GroupConfig(BaseModel):
         allow_mutation = True
 
 
-class MemberInfo(BaseModel):
+class MemberInfo(Structured):
     """描述群组成员的各项功能的设置（需要有相关限权）."""
 
     id: int
@@ -83,6 +91,9 @@ class MemberInfo(BaseModel):
         return f'https://q4.qlogo.cn/g?b=qq&nk={self.id}&s=140'
 
 
-class Client(BaseModel):
+class Client(Structured):
     id: int
     platform: Equipment
+
+
+Sender = Union[Friend, Member, Client, Stranger]
