@@ -10,7 +10,7 @@ from aiohttp import ClientSession, WSMsgType
 from yarl import URL
 
 from arclet.cesloi.utils import enter_context, Structured
-from arclet.letoderea import EventSystem
+from arclet.letoderea import EventSystem, search_event
 from arclet.cesloi.logger import Logger
 from .utils import error_check
 from .event.base import MiraiEvent
@@ -103,7 +103,7 @@ class Communicator:
         event_type: Optional[str] = data.get("type")
         if not event_type or not isinstance(event_type, str):
             raise TypeError("Unable to find 'type' field for automatic parsing")
-        event_class: Optional[MiraiEvent] = self.event_system.search_event(event_type)
+        event_class: Optional[MiraiEvent] = search_event(event_type)
         if not event_class:
             self.logger.error(
                 "An event is not recognized! Please report with your log to help us diagnose."
