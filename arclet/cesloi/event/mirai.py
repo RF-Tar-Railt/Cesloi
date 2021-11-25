@@ -10,7 +10,25 @@ from ..utils import bot_application, Structured
 from ..message.messageChain import MessageChain
 
 
-class BotOnlineEvent(MiraiEvent):
+class BotEvent(MiraiEvent):
+    """
+    指示有关 Bot 本身的事件.
+    """
+
+
+class FriendEvent(MiraiEvent):
+    """
+    指示有关好友的事件.
+    """
+
+
+class GroupEvent(MiraiEvent):
+    """
+    指示有关群组的事件.
+    """
+
+
+class BotOnlineEvent(BotEvent):
     """
     Bot登录成功
 
@@ -27,7 +45,7 @@ class BotOnlineEvent(MiraiEvent):
         )
 
 
-class BotOfflineEventActive(MiraiEvent):
+class BotOfflineEventActive(BotEvent):
     """Bot主动离线
 
     该事件可提供的参数:
@@ -43,7 +61,7 @@ class BotOfflineEventActive(MiraiEvent):
         )
 
 
-class BotOfflineEventForce(MiraiEvent):
+class BotOfflineEventForce(BotEvent):
     """Bot被挤下线
 
     该事件可提供的参数:
@@ -59,7 +77,7 @@ class BotOfflineEventForce(MiraiEvent):
         )
 
 
-class BotOfflineEventDropped(MiraiEvent):
+class BotOfflineEventDropped(BotEvent):
     """Bot被服务器断开或因网络问题而掉线
 
     该事件可提供的参数:
@@ -75,7 +93,7 @@ class BotOfflineEventDropped(MiraiEvent):
         )
 
 
-class BotReloginEvent(MiraiEvent):
+class BotReloginEvent(BotEvent):
     """Bot主动重新登录
 
     该事件可提供的参数:
@@ -91,7 +109,7 @@ class BotReloginEvent(MiraiEvent):
         )
 
 
-class FriendInputStatusChangedEvent(MiraiEvent):
+class FriendInputStatusChangedEvent(FriendEvent):
     """好友输入状态改变;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -111,7 +129,7 @@ class FriendInputStatusChangedEvent(MiraiEvent):
         )
 
 
-class FriendNickChangedEvent(MiraiEvent):
+class FriendNickChangedEvent(FriendEvent):
     """好友昵称改变;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -132,7 +150,7 @@ class FriendNickChangedEvent(MiraiEvent):
         )
 
 
-class BotGroupPermissionChangeEvent(MiraiEvent):
+class BotGroupPermissionChangeEvent(GroupEvent):
     """Bot在群里的权限被改变. 操作人一定是群主;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -154,7 +172,7 @@ class BotGroupPermissionChangeEvent(MiraiEvent):
         )
 
 
-class BotMuteEvent(MiraiEvent):
+class BotMuteEvent(GroupEvent):
     """Bot被禁言;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -177,7 +195,7 @@ class BotMuteEvent(MiraiEvent):
         )
 
 
-class BotUnmuteEvent(MiraiEvent):
+class BotUnmuteEvent(GroupEvent):
     """Bot被取消禁言;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -199,7 +217,7 @@ class BotUnmuteEvent(MiraiEvent):
         )
 
 
-class BotJoinGroupEvent(MiraiEvent):
+class BotJoinGroupEvent(GroupEvent):
     """Bot加入了一个新群
 
     该事件可提供的参数:
@@ -217,7 +235,7 @@ class BotJoinGroupEvent(MiraiEvent):
         )
 
 
-class BotLeaveEventActive(MiraiEvent):
+class BotLeaveEventActive(GroupEvent):
     """Bot主动退出一个群
 
     该事件可提供的参数:
@@ -235,7 +253,7 @@ class BotLeaveEventActive(MiraiEvent):
         )
 
 
-class BotLeaveEventKick(MiraiEvent):
+class BotLeaveEventKick(GroupEvent):
     """Bot被踢出一个群
 
     该事件可提供的参数:
@@ -257,7 +275,7 @@ class BotLeaveEventKick(MiraiEvent):
         )
 
 
-class GroupRecallEvent(MiraiEvent):
+class GroupRecallEvent(GroupEvent):
     """群消息被撤回;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -283,7 +301,7 @@ class GroupRecallEvent(MiraiEvent):
         )
 
 
-class FriendRecallEvent(MiraiEvent):
+class FriendRecallEvent(GroupEvent):
     """好友消息被撤回;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -309,7 +327,7 @@ class NudgeSubject(Structured):
     kind: str
 
 
-class NudgeEvent(MiraiEvent):
+class NudgeEvent(GroupEvent):
     """戳一戳事件;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -331,7 +349,7 @@ class NudgeEvent(MiraiEvent):
         )
 
 
-class GroupNameChangeEvent(MiraiEvent):
+class GroupNameChangeEvent(GroupEvent):
     """某个群名被改变;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -356,7 +374,7 @@ class GroupNameChangeEvent(MiraiEvent):
         )
 
 
-class GroupEntranceAnnouncementChangeEvent(MiraiEvent):
+class GroupEntranceAnnouncementChangeEvent(GroupEvent):
     """某群入群公告被改变;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -381,7 +399,7 @@ class GroupEntranceAnnouncementChangeEvent(MiraiEvent):
         )
 
 
-class GroupMuteAllEvent(MiraiEvent):
+class GroupMuteAllEvent(GroupEvent):
     """有一群组开启/关闭了全体禁言;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -406,7 +424,7 @@ class GroupMuteAllEvent(MiraiEvent):
         )
 
 
-class GroupAllowAnonymousChatEvent(MiraiEvent):
+class GroupAllowAnonymousChatEvent(GroupEvent):
     """有一群组开启/关闭了匿名聊天;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -431,7 +449,7 @@ class GroupAllowAnonymousChatEvent(MiraiEvent):
         )
 
 
-class GroupAllowConfessTalkEvent(MiraiEvent):
+class GroupAllowConfessTalkEvent(GroupEvent):
     """有一群组开启/关闭了坦白说;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -454,7 +472,7 @@ class GroupAllowConfessTalkEvent(MiraiEvent):
         )
 
 
-class GroupAllowMemberInviteEvent(MiraiEvent):
+class GroupAllowMemberInviteEvent(GroupEvent):
     """有一群组修改了该群是否允许群员邀请其他用户加入群组的功能;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -479,7 +497,7 @@ class GroupAllowMemberInviteEvent(MiraiEvent):
         )
 
 
-class MemberJoinEvent(MiraiEvent):
+class MemberJoinEvent(GroupEvent):
     """新人入群的事件
 
     该事件可提供的参数:
@@ -499,7 +517,7 @@ class MemberJoinEvent(MiraiEvent):
         )
 
 
-class MemberLeaveEventKick(MiraiEvent):
+class MemberLeaveEventKick(GroupEvent):
     """成员被踢出群（该成员不是Bot）;当 `operator` 为 `None` 时, 执行者为Bot
 
     该事件可提供的参数:
@@ -523,7 +541,7 @@ class MemberLeaveEventKick(MiraiEvent):
         )
 
 
-class MemberLeaveEventQuit(MiraiEvent):
+class MemberLeaveEventQuit(GroupEvent):
     """成员主动离群（该成员不是Bot）
 
     该事件可提供的参数:
@@ -543,7 +561,7 @@ class MemberLeaveEventQuit(MiraiEvent):
         )
 
 
-class MemberCardChangeEvent(MiraiEvent):
+class MemberCardChangeEvent(GroupEvent):
     """群名片改动;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -567,7 +585,7 @@ class MemberCardChangeEvent(MiraiEvent):
         )
 
 
-class MemberSpecialTitleChangeEvent(MiraiEvent):
+class MemberSpecialTitleChangeEvent(GroupEvent):
     """群头衔改动（只有群主有操作限权）;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -591,7 +609,7 @@ class MemberSpecialTitleChangeEvent(MiraiEvent):
         )
 
 
-class MemberPermissionChangeEvent(MiraiEvent):
+class MemberPermissionChangeEvent(GroupEvent):
     """成员权限改变的事件（该成员不是Bot）;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -615,7 +633,7 @@ class MemberPermissionChangeEvent(MiraiEvent):
         )
 
 
-class MemberMuteEvent(MiraiEvent):
+class MemberMuteEvent(GroupEvent):
     """群成员被禁言事件（该成员不是Bot）;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -642,7 +660,7 @@ class MemberMuteEvent(MiraiEvent):
         )
 
 
-class MemberUnmuteEvent(MiraiEvent):
+class MemberUnmuteEvent(GroupEvent):
     """群成员被取消禁言事件（该成员不是Bot）;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
@@ -668,7 +686,7 @@ class MemberUnmuteEvent(MiraiEvent):
         )
 
 
-class MemberHonorChangeEvent(MiraiEvent):
+class MemberHonorChangeEvent(GroupEvent):
     """群员称号改变;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
