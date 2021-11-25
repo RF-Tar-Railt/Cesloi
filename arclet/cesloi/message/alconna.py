@@ -80,7 +80,6 @@ class Arpamar(BaseModel):
         self.elements = {}
         self.raw_texts = []
         self.matched = False
-        self.match_table = []
         self.need_marg = False
 
     @property
@@ -95,7 +94,7 @@ class Arpamar(BaseModel):
 
     def analysis_result(self) -> None:
         for k, v in self.results['options'].items():
-            k = re.sub(r"`~\?/\.,<>;':\"\|\\!@#\$%\^&*\(\)_+-=}{\[]", "", k)
+            k = re.sub(r'[\-`~?/.,<>;\':\"|!@#$%^&*()_+=\[\]}{]+', "", k)
             self.__setattr__(k, v)
 
     def get(self, name: str) -> dict:
