@@ -1,10 +1,10 @@
 import os
 import sys
-import time
 from types import ModuleType
 from typing import Optional, Dict, Union, Type, Callable, List
 import importlib
-from ..letoderea import EventSystem, TemplateEvent, EventDelegate, Publisher, Subscriber, Condition_T, TemplateDecorator
+from ..letoderea import EventSystem, TemplateEvent, EventDelegate, Publisher, Subscriber, Condition_T, \
+    TemplateDecorator, search_event, event_class_generator
 from .logger import Logger
 
 
@@ -52,31 +52,33 @@ class Bellidin:
             raise RuntimeError("Delegate didn't existed!")
         if isinstance(event, str):
             name = event
-            event = cls.event_system.search_event(event)
+            event = search_event(event)
             if not event:
                 raise Exception(name + " cannot found!")
+
+        events = [event]
+        events.extend(event_class_generator(event))
         conditions = conditions or []
         decorators = decorators or []
 
         def register_wrapper(func: Callable):
             subscriber = Subscriber(
                 callable_target=func,
-                priority=priority,
                 decorators=decorators
             )
-            may_publishers = cls.event_system.get_publisher(event)
-            _event_handler = EventDelegate(event=event)
-            _event_handler += subscriber
-            if not may_publishers:
-                cls.event_system.publisher_list.append(Publisher(conditions, _event_handler))
-            else:
-                for m_publisher in may_publishers:
-                    if m_publisher.equal_conditions(conditions):
-                        m_publisher += _event_handler
-                        break
+            for e in events:
+                may_publishers = cls.event_system.get_publisher(e)
+                _event_handler = EventDelegate(event=e)
+                _event_handler += subscriber
+                if not may_publishers:
+                    cls.event_system.publisher_list.append(Publisher(priority, conditions, _event_handler))
                 else:
-                    cls.event_system.publisher_list.append(Publisher(conditions, _event_handler))
-                    print(cls.event_system.publisher_list)
+                    for m_publisher in may_publishers:
+                        if m_publisher.equal_conditions(conditions):
+                            m_publisher += _event_handler
+                            break
+                    else:
+                        cls.event_system.publisher_list.append(Publisher(priority, conditions, _event_handler))
             if cls.current_module_name not in cls._module_target_dict:
                 cls._module_target_dict[cls.current_module_name] = [[event, subscriber]]
             else:
