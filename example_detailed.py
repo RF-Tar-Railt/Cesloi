@@ -9,10 +9,14 @@ from arclet.cesloi.communicate_with_mah import BotSession
 from arclet.cesloi.message.alconna import Alconna, AnyStr, Arpamar, Option, AlconnaParser
 from arclet.cesloi.timing.schedule import Toconada
 from arclet.cesloi.timing.timers import EveryTimer
+from arclet.cesloi.interrupts import friend_message_handler
 from arclet.letoderea import EventSystem
+from arclet.letoderea.breakpoint import Breakpoint
 
 loop = asyncio.new_event_loop()
 es = EventSystem(loop=loop)
+break_point = Breakpoint(es)
+
 bot = Cesloi(
     event_system=es,
     bot_session=BotSession(
@@ -37,8 +41,16 @@ async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpa
         await app.send_with(friend, MessageChain.create(arpamar.main_argument))
 
 
+@es.register("FriendMessage")
+async def test1(app: Cesloi, friend: Friend, message: MessageChain):
+    if message.to_text().startswith('Test'):
+        await app.send_with(friend, nudge=True)
+        await break_point(friend_message_handler("Hello"))
+        await app.send_friend_message(friend, "Hello,World!")
+
+
 @es.register(GroupMessage, decorators=[AlconnaParser(alconna=Weather)])
-async def test1(app: Cesloi, city: MessageChain, group: Group, arpamar: Arpamar):
+async def test2(app: Cesloi, city: MessageChain, group: Group, arpamar: Arpamar):
     if arpamar.matched:
         city_name = arpamar.header
         city_day = ""
