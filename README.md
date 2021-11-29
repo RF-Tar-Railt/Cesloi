@@ -84,8 +84,12 @@ async def test(app: Cesloi, friend: Friend, result: Arpamar):
  - ~~PluginManager， 不局限于在一个文件中运行方法~~ (已实现)
 
 **二期计划**
- - Interrupt, 中断处理
+ - ~~Interrupt, 中断处理~~ (已实现)
  - ~~Decorator，用户自定义的处理器~~ (已实现)
+
+**三期计划**
+ - 主题框架再封装
+ - 完善文档
 
 ## 鸣谢&相关项目
 > 这些项目也很棒, 去他们的项目页看看, 点个 `Star` 以鼓励他们的开发工作, 毕竟没有他们也没有 `Cesloi`.
