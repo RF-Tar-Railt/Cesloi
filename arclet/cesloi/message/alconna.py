@@ -1,12 +1,14 @@
 from typing import Dict, List, Optional, Union, Type, Any
 from pydantic import BaseModel
 import re
-from arclet.cesloi.message.element import MessageElement
-from arclet.cesloi.message.messageChain import MessageChain
+
+from .element import MessageElement
+from .messageChain import MessageChain
+from .utils import split_once
+from ..exceptions import ParamsUnmatched
 from arclet.letoderea.entities.decorator import EventDecorator
 from arclet.letoderea.utils import ArgumentPackage
-from arclet.cesloi.message.utils import split_once
-from arclet.cesloi.exceptions import ParamsUnmatched
+
 
 AnyIP = r"(\d+)\.(\d+)\.(\d+)\.(\d+)"
 AnyDigit = r"(\d+)"
@@ -84,6 +86,7 @@ class Arpamar(BaseModel):
         self.need_marg: bool = False
         self.matched: bool = False
         self.head_matched: bool = False
+        self._args: Dict[str, Any] = {}
 
     @property
     def main_argument(self):
@@ -97,10 +100,19 @@ class Arpamar(BaseModel):
         else:
             return self.head_matched
 
+    @property
+    def args(self):
+        return self._args
+
     def analysis_result(self) -> None:
         for k, v in self.results['options'].items():
             k: str = re.sub(r'[\-`~?/.,<>;\':\"|!@#$%^&*()_+=\[\]}{]+', "", k)
             self.__setattr__(k, v)
+            for kk, vv in v.items():
+                if not isinstance(vv, dict):
+                    self._args[kk] = vv
+                else:
+                    self._args.update(vv)
 
     def get(self, name: str) -> dict:
         return self.__getattribute__(name)
@@ -247,7 +259,8 @@ class Alconna(CommandInterface):
             self.result.results['options'][name] = subcommand
         return True
 
-    def _analysis_header(self, head_text: str) -> bool:
+    def _analysis_header(self) -> bool:
+        head_text, self.result.raw_texts[0][0] = self.result.split_by(self.separator)
         for ch in self._command_headers:
             _head_find = re.findall('^' + ch + '$', head_text)
             if not _head_find:
@@ -279,9 +292,9 @@ class Alconna(CommandInterface):
             self.result.results.clear()
             return self.result
 
+        self._analysis_header()
         _text_static: Dict[str, int] = {}  # 统计字符串被切出来的次数
-        _text, self.result.raw_texts[0][0] = self.result.split_by(self.separator)
-        while self._analysis_header(_text) and not all([t[0] == "" for t in self.result.raw_texts]):
+        while self.result.head_matched and not (all([t[0] == "" for t in self.result.raw_texts])):
             try:
                 _text, _rest_text = self.result.split_by(self.separator)
                 for param in self._params:
@@ -314,7 +327,6 @@ class Alconna(CommandInterface):
                             raise ParamsUnmatched
             except ParamsUnmatched:
                 break
-
         try:
             # 如果没写options并且marg不是str的话，匹配完命令头后是进不去上面的代码的，这里单独拿一段出来
             may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
@@ -323,7 +335,8 @@ class Alconna(CommandInterface):
         except (IndexError, KeyError):
             pass
 
-        if self.result.head_matched and len(self.result.elements) == 0 and all([t[0] == "" for t in self.result.raw_texts]) \
+        if self.result.head_matched and len(self.result.elements) == 0 and all(
+                [t[0] == "" for t in self.result.raw_texts]) \
                 and (not self.result.need_marg or (self.result.need_marg and 'main_argument' in self.result.results)):
             self.result.matched = True
             self.result.analysis_result()
@@ -344,128 +357,3 @@ class AlconnaParser(EventDecorator):
     def supply(self, target_argument: ArgumentPackage) -> Arpamar:
         if target_argument.annotation == MessageChain:
             return self.alconna.analysis_message(target_argument.value)
-
-
-if __name__ == "__main__":
-    from arclet.cesloi.message.element import At
-
-    """ping = Alconna(
-        headers=["/", "!"],
-        command="ping",
-        options=[
-            Subcommand(
-                "test",
-                Option("-u", username=AnyStr)
-            ).separate(' '),
-            Option("-n", count=AnyDigit),
-            Option("-t"),
-            Option("-u", At=At)
-        ],
-        main_argument=AnyIP
-    )
-    msg = MessageChain.create("/ping -u", At(123), "test -u AAA -n 222 127.0.0.1")
-    print(msg)
-    print(ping.analysis_message(msg).results)
-
-    msg1 = MessageChain.create("/ping 127.0.0.1 -u", At(123))
-    print(msg1)
-    print(ping.analysis_message(msg1).has('u'))
-
-    msg2 = MessageChain.create("/ping")
-    print(msg2)
-    result = ping.analysis_message(msg2)
-    print(result.matched)
-    """
-    aaa = Alconna(
-        headers=[".", "!"],
-        command="摸一摸",
-        main_argument=At
-    )
-    msg = MessageChain.create(".摸一摸", At(123))
-    print(msg)
-    print(aaa.analysis_message(msg).matched)
-    """
-    img = Alconna(
-        headers=[".", "。"],
-        command="Image",
-        options=[
-            Subcommand(
-                "upload",
-                Option("-path", path=AnyStr),
-                Option("-image", image=Image),
-            ),
-            Subcommand(
-                "download",
-                Option("-url", url=AnyUrl)
-            ),
-            Option("--savePath", path=AnyStr)
-        ]
-    )
-    msg = MessageChain.create("。Image --savePath test.png upload -image ",
-                              Image(path="alconna.png"), " download -url https://www.baidu.com")
-    print(msg.to_text())
-    print(img.analysis_message(msg).get('upload'))
-
-    ccc = Alconna(
-        headers=[""],
-        command="help",
-        main_argument=AnyStr
-    )
-    msg = "help \"what he say?\""
-    print(msg)
-    result = ccc.analysis_message(msg)
-    print(result.main_argument)
-
-    ddd = Alconna(
-        headers=[""],
-        command=f"Cal",
-        options=[
-            Option("-sum", a=AnyDigit, b=AnyDigit)
-        ]
-    )
-    msg = "Cal -sum 12 23"
-    print(msg)
-    result = ddd.analysis_message(msg)
-    print(result.get('sum'))
-    """
-    ddd = Alconna(
-        headers=[""],
-        command="点歌",
-        options=[
-            Option("歌名", song_name=AnyStr).separate('：'),
-            Option("歌手", singer_name=AnyStr).separate('：')
-        ]
-    )
-    msg = "点歌 歌名：Freejia"
-    print(msg)
-    result = ddd.analysis_message(msg)
-    print(result.matched)
-
-    eee = Alconna(
-        headers=[""],
-        command=f"RD{AnyDigit}?=={AnyDigit}"
-    )
-    msg = "RD100==36"
-    result = eee.analysis_message(msg)
-    print(result.results)
-    """
-    print(Alconna.split("Hello! \"what is it?\" aaa bbb"))"""
-
-    weather = Alconna(
-        headers=['渊白', 'cmd.', '/bot '],
-        command=f"{AnyStr}天气",
-        options=[
-            Option("时间", days=AnyStr).separate('=')
-        ]
-    )
-    msg = MessageChain.create('渊白桂林天气 时间=明天')
-    result = weather.analysis_message(msg)
-    print(result)
-
-    msg = MessageChain.create('渊白桂林天气 aaa')
-    result = weather.analysis_message(msg)
-    print(result)
-
-    msg = MessageChain.create(At(123))
-    result = weather.analysis_message(msg)
-    print(result)
