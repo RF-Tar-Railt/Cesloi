@@ -71,6 +71,7 @@ class Communicator:
         self.ws_connection: Optional[aiohttp.ClientWebSocketResponse] = None
         self.client_session: Optional[ClientSession] = None
         self.wait_response_future: Dict[str, asyncio.Future] = {}
+        self.timeout: float = 5.0
 
     async def stop(self):
         self.running = False
@@ -208,12 +209,13 @@ class Communicator:
             ping_count = 0
             while self.running:
                 try:
-                    ws_message = await connection.receive()
+                    ws_message = await asyncio.wait_for(connection.receive(), timeout=self.timeout)
                 except asyncio.TimeoutError:
                     if ping_count > 5:
-                        self.logger.warning("websocket: timeout,stop")
+                        self.logger.warning("websocket: timeout, stop")
                         await self.stop()
                     else:
+                        self.logger.debug("websocket: trying ping...")
                         await self.ws_connection.ping()
                         ping_count += 1
                     continue
