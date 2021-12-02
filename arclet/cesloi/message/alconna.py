@@ -104,7 +104,7 @@ class Arpamar(BaseModel):
     def args(self):
         return self._args
 
-    def analysis_result(self) -> None:
+    def encapsulate_result(self) -> None:
         for k, v in self.results['options'].items():
             k: str = re.sub(r'[\-`~?/.,<>;\':\"|!@#$%^&*()_+=\[\]}{]+', "", k)
             self.__setattr__(k, v)
@@ -202,7 +202,7 @@ class Alconna(CommandInterface):
         elif self.command:
             self._command_headers.append(self.command)
 
-    def _analysis_option(self, param, text, rest_text, option_dict) -> bool:
+    def _analyse_option(self, param, text, rest_text, option_dict) -> bool:
         opt = param['name']
         arg = param['args']
         sep = param['separator']
@@ -238,7 +238,7 @@ class Alconna(CommandInterface):
 
         return True
 
-    def _analysis_subcommand(self, param, text, rest_text) -> bool:
+    def _analyse_subcommand(self, param, text, rest_text) -> bool:
         subcommand = {}
         command = param['name']
         sep = param['separator']
@@ -252,14 +252,14 @@ class Alconna(CommandInterface):
             try:
                 if sep == self.separator:
                     may_text, rest_text = self.result.split_by(sep)
-                self._analysis_option(option, may_text, rest_text, subcommand)
+                self._analyse_option(option, may_text, rest_text, subcommand)
             except (IndexError, KeyError):
                 continue
         if name not in self.result.results['options']:
             self.result.results['options'][name] = subcommand
         return True
 
-    def _analysis_header(self) -> bool:
+    def _analyse_header(self) -> bool:
         head_text, self.result.raw_texts[0][0] = self.result.split_by(self.separator)
         for ch in self._command_headers:
             _head_find = re.findall('^' + ch + '$', head_text)
@@ -272,7 +272,7 @@ class Alconna(CommandInterface):
             return True
         return False
 
-    def analysis_message(self, message: Union[str, MessageChain]) -> Arpamar:
+    def analyse_message(self, message: Union[str, MessageChain]) -> Arpamar:
         self.result: Arpamar = Arpamar()
 
         if isinstance(message, str):
@@ -292,7 +292,7 @@ class Alconna(CommandInterface):
             self.result.results.clear()
             return self.result
 
-        self._analysis_header()
+        self._analyse_header()
         _text_static: Dict[str, int] = {}  # 统计字符串被切出来的次数
         while self.result.head_matched and not (all([t[0] == "" for t in self.result.raw_texts])):
             try:
@@ -305,10 +305,10 @@ class Alconna(CommandInterface):
                                 self.result.results['main_argument'] = _param_find[0]
                                 self.result.raw_texts[self.result.current_index][0] = _rest_text
                         elif isinstance(param, dict):
-                            if param['type'] == 'OPT' and self._analysis_option(
+                            if param['type'] == 'OPT' and self._analyse_option(
                                     param, _text, _rest_text, self.result.results['options']):
                                 del _text_static[_text]
-                            elif param['type'] == 'SBC' and self._analysis_subcommand(
+                            elif param['type'] == 'SBC' and self._analyse_subcommand(
                                     param, _text, _rest_text):
                                 del _text_static[_text]
                         else:
@@ -339,7 +339,7 @@ class Alconna(CommandInterface):
                 [t[0] == "" for t in self.result.raw_texts]) \
                 and (not self.result.need_marg or (self.result.need_marg and 'main_argument' in self.result.results)):
             self.result.matched = True
-            self.result.analysis_result()
+            self.result.encapsulate_result()
         else:
             self.result.results.clear()
         return self.result
@@ -356,4 +356,4 @@ class AlconnaParser(EventDecorator):
 
     def supply(self, target_argument: ArgumentPackage) -> Arpamar:
         if target_argument.annotation == MessageChain:
-            return self.alconna.analysis_message(target_argument.value)
+            return self.alconna.analyse_message(target_argument.value)
