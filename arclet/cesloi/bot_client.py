@@ -133,7 +133,11 @@ class Cesloi:
                 self.daemon_task = None
             await self.communicator.stop()
             for t in asyncio.all_tasks(self.event_system.loop):
-                if t is not asyncio.current_task(self.event_system.loop):
+                if (
+                        t is not asyncio.current_task(self.event_system.loop)
+                        and not t.get_name().startswith("cesloi")
+                        and not t.get_name().startswith("_")
+                ):
                     t.cancel()
                     try:
                         await t
@@ -151,7 +155,7 @@ class Cesloi:
                 self.running = True
                 start_time = time.time()
                 self.logger.info("Cesloi Application Starting...")
-                self.daemon_task = loop.create_task(self.running_task())
+                self.daemon_task = loop.create_task(self.running_task(), name="cesloi_web_task")
                 while not self.bot_session.sessionKey:
                     loop.run_until_complete(asyncio.sleep(0.001))
                 self.event_system.event_spread(ApplicationRunning(self))
