@@ -301,7 +301,7 @@ class GroupRecallEvent(GroupEvent):
         )
 
 
-class FriendRecallEvent(GroupEvent):
+class FriendRecallEvent(FriendEvent):
     """好友消息被撤回;可使用原始事件类作为参数, 以此获得该事件实例, 以获取更多的信息
 
     该事件可提供的参数:
