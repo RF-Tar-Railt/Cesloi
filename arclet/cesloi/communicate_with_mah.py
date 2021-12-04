@@ -71,7 +71,7 @@ class Communicator:
         self.ws_connection: Optional[aiohttp.ClientWebSocketResponse] = None
         self.client_session: Optional[ClientSession] = None
         self.wait_response_future: Dict[str, asyncio.Future] = {}
-        self.timeout: float = 5.0
+        self.timeout: float = 30.0
 
     async def stop(self):
         self.running = False
@@ -206,19 +206,21 @@ class Communicator:
             self.logger.debug("connecting to websocket")
             self.ws_connection = connection
             connected = False
-            ping_count = 0
             while self.running:
                 try:
-                    ws_message = await asyncio.wait_for(connection.receive(), timeout=self.timeout)
+                    ws_message = await connection.receive(timeout=self.timeout)
                 except asyncio.TimeoutError:
-                    if ping_count > 5:
-                        self.logger.warning("websocket: timeout, stop")
-                        await self.stop()
-                    else:
-                        self.logger.debug("websocket: trying ping...")
-                        await self.ws_connection.ping()
-                        ping_count += 1
-                    continue
+                    try:
+                        try:
+                            self.logger.debug("websocket: trying ping...")
+                            await self.ws_connection.ping()
+                        except Exception as e:
+                            self.logger.exception(f"websocket: ping failed: {e!r}")
+                        else:
+                            continue
+                    except asyncio.CancelledError:
+                        self.logger.warning("websocket: cancelled, stop")
+                        return await self.stop()
                 if ws_message.type is WSMsgType.TEXT:
                     received_data: dict = json.loads(ws_message.data)
                     if connected:
