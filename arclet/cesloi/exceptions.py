@@ -37,6 +37,3 @@ class InvalidArgument(Exception):
 class UnknownError(Exception):
     """其他错误"""
 
-
-class ParamsUnmatched(Exception):
-    """一个 text 没有被任何参数匹配成功"""
