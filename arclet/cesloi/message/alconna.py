@@ -5,10 +5,8 @@ import re
 from .element import MessageElement
 from .messageChain import MessageChain
 from .utils import split_once
-from ..exceptions import ParamsUnmatched
 from arclet.letoderea.entities.decorator import EventDecorator
 from arclet.letoderea.utils import ArgumentPackage
-
 
 AnyIP = r"(\d+)\.(\d+)\.(\d+)\.(\d+)"
 AnyDigit = r"(\d+)"
@@ -46,17 +44,20 @@ class Option(CommandInterface):
 class Subcommand(CommandInterface):
     type: str = "SBC"
     Options: List[Option]
+    args: Argument_T
 
-    def __init__(self, name: str, *options: Option):
+    def __init__(self, name: str, *options: Option, args: Optional[Argument_T] = None):
         if name == "":
             raise ValueError("You can't give this with a null name !")
         super().__init__(
             name=name,
-            Options=list(options)
+            Options=list(options),
+            args=args or ""
         )
 
 
 Options_T = List[Union[Subcommand, Option]]
+_builtin_option = Option("-help")
 
 
 class Arpamar(BaseModel):
@@ -192,9 +193,17 @@ class Alconna(CommandInterface):
             options=options or [],
             main_argument=main_argument or "",
         )
+        self.options.append(_builtin_option)
+
         # params是除开命令头的剩下部分
-        self._params: List[Union[Argument_T, Dict[str, Any]]] = [self.main_argument]
-        self._params.extend(self.dict()['options'])
+        self._params: Dict[str, Union[Argument_T, Dict[str, Any]]] = {"main_argument": self.main_argument}
+        for opts in self.dict()['options']:
+            if opts['type'] == "SBC":
+                opts.setdefault('sub_params', {"sub_args": opts['args']})
+                for sub_opts in opts['Options']:
+                    opts['sub_params'][sub_opts['name']] = sub_opts
+            self._params[opts['name']] = opts
+
         self._command_headers: List[str] = []  # 依据headers与command生成一个列表，其中含有所有的命令头
         if self.headers != [""]:
             for i in self.headers:
@@ -227,19 +236,18 @@ class Alconna(CommandInterface):
                     option_dict[name][k] = may_arg
                 if sep == self.separator:
                     self.result.raw_texts[self.result.current_index][0] = rest_text
-
-            may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
-            if type(self.result.elements[may_element_index]) is not v:
-                return False
-            if name not in option_dict:
-                option_dict[name] = {k: self.result.elements.pop(may_element_index)}
             else:
-                option_dict[name][k] = self.result.elements.pop(may_element_index)
+                may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+                if type(self.result.elements[may_element_index]) is not v:
+                    return False
+                if name not in option_dict:
+                    option_dict[name] = {k: self.result.elements.pop(may_element_index)}
+                else:
+                    option_dict[name][k] = self.result.elements.pop(may_element_index)
 
         return True
 
     def _analyse_subcommand(self, param, text, rest_text) -> bool:
-        subcommand = {}
         command = param['name']
         sep = param['separator']
         name, may_text = split_once(text, sep)
@@ -247,16 +255,45 @@ class Alconna(CommandInterface):
             name = text
         if not re.match('^' + command + '$', name):
             return False
-        self.result.raw_texts[self.result.current_index][0] = rest_text
-        for option in param['Options']:
+
+        self.result.raw_texts[self.result.current_index][0] = may_text
+        if sep == self.separator:
+            self.result.raw_texts[self.result.current_index][0] = rest_text
+
+        if name not in self.result.results['options']:
+            self.result.results['options'][name] = {}
+
+        subcommand = {}
+        sub_params = param['sub_params']
+        for i in range(len(sub_params)):
             try:
-                if sep == self.separator:
-                    may_text, rest_text = self.result.split_by(sep)
-                self._analyse_option(option, may_text, rest_text, subcommand)
+                _text, _rest_text = self.result.split_by(sep)
+                sub_param = sub_params.get(_text)
+                if not sub_param:
+                    sub_param = sub_params['sub_args']
+                    for sp in sub_params:
+                        if _text.startswith(sp):
+                            sub_param = sub_params.get(sp)
+                            break
+                if isinstance(sub_param, dict):
+                    self._analyse_option(sub_param, _text, _rest_text, subcommand)
+                elif isinstance(sub_param, str) and sub_param != "":
+                    _param_find = re.findall('^' + sub_param + '$', _text)
+                    if not _param_find:
+                        continue
+                    self.result.results['options'][name]['args'] = _param_find[0]
+                    self.result.raw_texts[self.result.current_index][0] = _rest_text
+                else:
+                    may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+                    if type(self.result.elements[may_element_index]) is sub_param:
+                        self.result.results['options'][name]['args'] = self.result.elements.pop(may_element_index)
             except (IndexError, KeyError):
                 continue
-        if name not in self.result.results['options']:
-            self.result.results['options'][name] = subcommand
+
+        if sep != self.separator:
+            self.result.raw_texts[self.result.current_index][0] = rest_text
+        self.result.results['options'][name].update(subcommand)
+
         return True
 
     def _analyse_header(self) -> bool:
@@ -272,17 +309,35 @@ class Alconna(CommandInterface):
             return True
         return False
 
+    def _analyse_main_argument(self, param, text, rest_text) -> bool:
+        if isinstance(param, str):
+            _param_find = re.findall('^' + param + '$', text)
+            if not _param_find:
+                return False
+            self.result.results['main_argument'] = _param_find[0]
+            self.result.raw_texts[self.result.current_index][0] = rest_text
+            return True
+        else:
+            try:
+                # 既不是str也不是dict的情况下，认为param传入了一个类的Type
+                may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
+                if type(self.result.elements[may_element_index]) is param:
+                    self.result.results['main_argument'] = self.result.elements.pop(may_element_index)
+                    return True
+            except KeyError:
+                pass
+        return False
+
     def analyse_message(self, message: Union[str, MessageChain]) -> Arpamar:
         self.result: Arpamar = Arpamar()
 
         if isinstance(message, str):
             self.result.raw_texts.append([message, 0])
         else:
-            message: MessageChain = message.copy_self().to_sendable()
             for i, ele in enumerate(message):
-                if ele.__class__.__name__ != "Plain":
+                if ele.__class__.__name__ not in ("Plain", "Source", "Quote", "File"):
                     self.result.elements[i] = ele
-                else:
+                elif ele.__class__.__name__ == "Plain":
                     self.result.raw_texts.append([ele.text.lstrip(' '), i])
 
         if self.main_argument != "":
@@ -293,51 +348,40 @@ class Alconna(CommandInterface):
             return self.result
 
         self._analyse_header()
-        _text_static: Dict[str, int] = {}  # 统计字符串被切出来的次数
-        while self.result.head_matched and not (all([t[0] == "" for t in self.result.raw_texts])):
-            try:
-                _text, _rest_text = self.result.split_by(self.separator)
-                for param in self._params:
-                    try:  # 因为sub与opt一定是dict的，所以str型的param只能是marg
-                        if isinstance(param, str):
-                            _param_find = re.findall('^' + param + '$', _text)
-                            if _param_find:
-                                self.result.results['main_argument'] = _param_find[0]
-                                self.result.raw_texts[self.result.current_index][0] = _rest_text
-                        elif isinstance(param, dict):
-                            if param['type'] == 'OPT' and self._analyse_option(
-                                    param, _text, _rest_text, self.result.results['options']):
-                                del _text_static[_text]
-                            elif param['type'] == 'SBC' and self._analyse_subcommand(
-                                    param, _text, _rest_text):
-                                del _text_static[_text]
-                        else:
-                            # 既不是str也不是dict的情况下，认为param传入了一个类的Type
-                            may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
-                            if type(self.result.elements[may_element_index]) is param:
-                                self.result.results['main_argument'] = self.result.elements.pop(may_element_index)
-                    except KeyError:
-                        pass
-                    finally:
-                        if _text not in _text_static:
-                            _text_static[_text] = 1
-                        else:
-                            _text_static[_text] += 1
-                        if _text_static[_text] > len(self._params):  # 如果大于这个次数说明该text没有被任何参数匹配成功
-                            raise ParamsUnmatched
-            except ParamsUnmatched:
-                break
+
+        if self.result.head_matched:
+            for i in range(len(self._params)):
+                try:
+                    _text, _rest_text = self.result.split_by(self.separator)
+                    _param = self._params.get(_text)
+                    if not _param:
+                        _param = self._params['main_argument']
+                        for p in self._params:
+                            if _text.startswith(p):
+                                _param = self._params.get(p)
+                                break
+                    if isinstance(_param, dict):
+                        if _param['type'] == 'OPT':
+                            self._analyse_option(_param, _text, _rest_text, self.result.results['options'])
+                        elif _param['type'] == 'SBC':
+                            self._analyse_subcommand(_param, _text, _rest_text)
+                    else:
+                        self._analyse_main_argument(_param, _text, _rest_text)
+                except (IndexError, KeyError):
+                    pass
+
         try:
             # 如果没写options并且marg不是str的话，匹配完命令头后是进不去上面的代码的，这里单独拿一段出来
             may_element_index = self.result.raw_texts[self.result.current_index][1] + 1
-            if self.result.elements and type(self.result.elements[may_element_index]) is self._params[0]:
+            if self.result.elements and type(self.result.elements[may_element_index]) is self._params['main_argument']:
                 self.result.results['main_argument'] = self.result.elements.pop(may_element_index)
         except (IndexError, KeyError):
             pass
 
         if self.result.head_matched and len(self.result.elements) == 0 and all(
                 [t[0] == "" for t in self.result.raw_texts]) \
-                and (not self.result.need_marg or (self.result.need_marg and 'main_argument' in self.result.results)):
+                and (not self.result.need_marg or 
+                     (self.result.need_marg and not self.result.has('help') and 'main_argument' in self.result.results)):
             self.result.matched = True
             self.result.encapsulate_result()
         else:
