@@ -5,7 +5,7 @@ import re
 from .element import MessageElement
 from .messageChain import MessageChain
 from .utils import split_once
-from ..exceptions import ParamsUnmatched
+from ..exceptions import ParamsUnmatched, InvalidOptionName, NullName
 from arclet.letoderea.entities.decorator import EventDecorator
 from arclet.letoderea.utils import ArgumentPackage
 
@@ -36,11 +36,12 @@ class OptionInterface(CommandInterface):
 
 class Option(OptionInterface):
     type: str = "OPT"
-    args: Dict[str, Argument_T]
 
     def __init__(self, name: str, **kwargs):
         if name == "":
-            raise ValueError("You can't give this with a null name !")
+            raise NullName
+        if re.match(r"^[`~?/.,<>;\':\"|!@#$%^&*()_+=\[\]}{]+.*$", name):
+            raise InvalidOptionName
         super().__init__(
             name=name,
             args={k: v for k, v in kwargs.items() if k not in ('name', 'type')}
@@ -50,11 +51,12 @@ class Option(OptionInterface):
 class Subcommand(OptionInterface):
     type: str = "SBC"
     Options: List[Option]
-    args: Dict[str, Argument_T]
 
     def __init__(self, name: str, *options: Option, **kwargs):
         if name == "":
-            raise ValueError("You can't give this with a null name !")
+            raise NullName
+        if re.match(r"^[`~?/.,<>;\':\"|!@#$%^&*()_+=\[\]}{]+.*$", name):
+            raise InvalidOptionName
         super().__init__(
             name=name,
             Options=list(options),
@@ -113,12 +115,11 @@ class Arpamar(BaseModel):
 
     def encapsulate_result(self) -> None:
         for k, v in self.results['options'].items():
-            k: str = re.sub(r'[\-`~?/.,<>;\':\"|!@#$%^&*()_+=\[\]}{]+', "", k)
-            self.__setattr__(k, v)
+            self.__setattr__(k.lstrip("-"), v)
             if isinstance(v, dict):
                 for kk, vv in v.items():
                     if not isinstance(vv, dict):
-                        self._args[re.sub(r'[\-`~?/.,<>;\':\"|!@#$%^&*()_+=\[\]}{]+', "", kk)] = vv
+                        self._args[kk.lstrip("-")] = vv
                     else:
                         self._args.update(vv)
 
@@ -193,7 +194,7 @@ class Alconna(CommandInterface):
     ):
         # headers与command二者必须有其一
         if all([all([not headers, not command]), not options, not main_argument]):
-            raise ValueError("You must input one parameter!")
+            raise NullName
         super().__init__(
             headers=headers or [""],
             command=command or "",
@@ -226,8 +227,11 @@ class Alconna(CommandInterface):
                     may_arg, may_args = split_once(may_args, sep)
                 else:
                     may_arg, rest_text = self.result.split_by(sep)
-                if not re.match('^' + v + '$', may_arg):
+                _arg_find = re.findall('^' + v + '$', may_arg)
+                if not _arg_find:
                     raise ParamsUnmatched
+                if _arg_find[0] == v:
+                    may_arg = Ellipsis
                 if key_name not in option_dict:
                     option_dict[key_name] = {k: may_arg}
                 else:
@@ -255,27 +259,32 @@ class Alconna(CommandInterface):
             raise ParamsUnmatched
         self.result.raw_texts[self.result.current_index][0] = rest_text
         if not arg:
-            option_dict[text] = ...
+            option_dict[text] = Ellipsis
             return True
         return self._analyse_args(name, arg, may_args, sep, rest_text, option_dict)
 
     def _analyse_subcommand(self, param, text, rest_text) -> bool:
         command = param['name']
         sep = param['separator']
+        sub_params = param['sub_params']
         name, may_text = split_once(text, sep)
         if sep == self.separator:
             name = text
         if not re.match('^' + command + '$', name):
             raise ParamsUnmatched
+
         self.result.raw_texts[self.result.current_index][0] = may_text
         if sep == self.separator:
             self.result.raw_texts[self.result.current_index][0] = rest_text
+
+        if not param['args'] and not param['Options']:
+            self.result.results['options'][name] = Ellipsis
+            return True
 
         if name not in self.result.results['options']:
             self.result.results['options'][name] = {}
 
         subcommand = {}
-        sub_params = param['sub_params']
         get_args = False
         for i in range(len(sub_params)):
             try:
