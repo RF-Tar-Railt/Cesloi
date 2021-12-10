@@ -465,20 +465,21 @@ class Cesloi:
             target = target
         if nudge:
             if isinstance(target, Friend) or isinstance(target, Member):
-                return await self.send_nudge(target)
-        data = {"message": messages, "target": target}
-        if quote:
-            data["quote"] = quote
-        if isinstance(target, Friend):
-            return await self.send_friend_message(**data)
-        elif isinstance(target, Group):
-            return await self.send_group_message(**data)
-        elif isinstance(target, Member):
-            return await self.send_temp_message(**data)
-        else:
-            raise ValueError(
-                f"target {target} unclear! Please take an instance of the dialog object type as a parameter"
-            )
+                await self.send_nudge(target)
+        if messages:
+            data = {"message": messages, "target": target}
+            if quote:
+                data["quote"] = quote
+            if isinstance(target, Friend):
+                return await self.send_friend_message(**data)
+            elif isinstance(target, Group):
+                return await self.send_group_message(**data)
+            elif isinstance(target, Member):
+                return await self.send_temp_message(**data)
+            else:
+                raise ValueError(
+                    f"target {target} unclear! Please take an instance of the dialog object type as a parameter"
+                )
 
     async def send_nudge(self, target: Union[Friend, Member, int]):
         target_id = target if isinstance(target, int) else target.id
