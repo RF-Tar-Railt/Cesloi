@@ -111,8 +111,8 @@ class Communicator:
             )
             raise ValueError(f"Unable to find event: {event_type}", data)
         data = {k: v for k, v in data.items() if k != "type"}
-        obj = event_class.parse_obj(data)
-        return await self.run_always_await(obj)
+        event = event_class.parse_obj(data)
+        return event
 
     async def ws_send_handle(
             self,
