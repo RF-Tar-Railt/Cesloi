@@ -20,6 +20,10 @@
 
 注: mirai-api-http 需要启用ws adapter和http adapter
 
+## 依赖
+
+本项目依赖于`ArcletProject`下的[Letoderea](https://github.com/ArcletProject/Letoderea)
+
 ## 文档
 
 [Cesloi暂时的文档](https://github.com/RF-Tar-Railt/Cesloi/wiki)
