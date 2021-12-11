@@ -37,19 +37,12 @@
 from arclet.cesloi.bot_client import Cesloi
 from arclet.cesloi.model.relation import Friend
 from arclet.cesloi.communicate_with_mah import BotSession
-from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
 
-bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"),
-             debug=False)
+bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"),debug=False)
 
-@bot.register(
-    "FriendMessage",
-    decorators=[AlconnaParser(alconna=Alconna(command="Hello"))]
-)
-async def test(app: Cesloi, friend: Friend, result: Arpamar):
-    await app.send_with(friend, "Hello, World!")
-    if result.matched:
-        await app.send_with(friend,nudge=True)
+@bot.register("FriendMessage")
+async def test(app: Cesloi, friend: Friend):
+    await app.send_with(friend, "Hello, World!", nudge=True)
     
 bot.start()
 ```
@@ -58,7 +51,6 @@ In `main.py` :
 ```python
 from arclet.cesloi.bot_client import Cesloi
 from arclet.cesloi.communicate_with_mah import BotSession
-
 
 bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"), debug=False)
 bot.install_plugins("test_plugins")
@@ -69,18 +61,11 @@ In `test_plugins/example_plugin.py` :
 ```python
 from arclet.cesloi.bot_client import Cesloi
 from arclet.cesloi.model.relation import Friend
-from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
 from arclet.cesloi.plugin import Bellidin as bd
 
-
-@bd.model_register(
-    "FriendMessage",
-    decorators=[AlconnaParser(alconna=Alconna(command="Hello"))]
-)
-async def test(app: Cesloi, friend: Friend, result: Arpamar):
-    await app.send_with(friend, "Hello, World!")
-    if result.matched:
-        await app.send_with(friend,nudge=True)
+@bd.model_register("FriendMessage")
+async def test(app: Cesloi, friend: Friend):
+    await app.send_with(friend, "Hello, World!", nudge=True)
 ```
 
 ## 未来开发计划
