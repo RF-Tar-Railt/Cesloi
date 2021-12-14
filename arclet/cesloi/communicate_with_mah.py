@@ -71,7 +71,7 @@ class Communicator:
         self.ws_connection: Optional[aiohttp.ClientWebSocketResponse] = None
         self.client_session: Optional[ClientSession] = None
         self.wait_response_future: Dict[str, asyncio.Future] = {}
-        self.timeout: float = 30.0
+        self.timeout: float = 60.0
 
     async def stop(self):
         self.running = False
