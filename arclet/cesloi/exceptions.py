@@ -48,3 +48,8 @@ class InvalidOptionName(Exception):
 
 class NullName(Exception):
     """命令的名称写入了空字符"""
+    
+    
+class InvalidFormatMap(Exception):
+    """错误的格式化参数串"""
+
