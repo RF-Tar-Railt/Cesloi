@@ -22,7 +22,7 @@
 
 ## 依赖
 
-本项目依赖于`ArcletProject`下的[Letoderea](https://github.com/ArcletProject/Letoderea)
+本项目依赖于`ArcletProject`下的[Letoderea](https://github.com/ArcletProject/Letoderea)与[Alconna](https://github.com/ArcletProject/Alconna)
 
 ## 文档
 
