@@ -8,7 +8,8 @@ from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
 from arclet.cesloi.timing.schedule import Toconada, Toconado
 from arclet.cesloi.timing.timers import EveryTimer
 
-bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"),debug=False)
+bot = Cesloi(bot_session=BotSession(host="http://localhost:8080", account=1234567890, verify_key="INITKEYWylsVdbr"),
+             debug=True)
 tot = Toconada(bot.event_system)
 
 
@@ -19,11 +20,9 @@ tot = Toconada(bot.event_system)
 )
 async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpamar):
     print(message.to_text())
-    await app.send_with(friend, nudge=True)
-    await app.send_friend_message(friend, "Hello,World!")
+    await app.send_with(friend, "Hello,World!", nudge=True)
     if arpamar.matched:
-        await app.send_with(friend, MessageChain.create(arpamar.main_argument))
-
+        await app.send_with(friend, MessageChain.create(arpamar.main_args))
 
 @bot.register("NewFriendRequestEvent")
 async def test1(app: Cesloi, event: NewFriendRequestEvent):
