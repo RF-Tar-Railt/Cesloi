@@ -2,4 +2,5 @@ aiohttp
 pydantic==1.8.2
 yarl
 loguru
-arclet-letoderea==0.2.2
+arclet-letoderea>=0.2.3
+arclet-alconna>=0.3.1
