@@ -6,7 +6,8 @@ from arclet.cesloi.model.relation import Friend, Group, Member
 from arclet.cesloi.message.element import Image, Plain
 from arclet.cesloi.message.messageChain import MessageChain
 from arclet.cesloi.communicate_with_mah import BotSession
-from arclet.cesloi.message.alconna import Alconna, AnyStr, Arpamar, Option, AlconnaParser
+from arclet.cesloi.message.alconna import Alconna, Arpamar, AlconnaParser
+from arclet.cesloi.message.alconna.utils import AnyStr, Option
 from arclet.cesloi.timing.schedule import Toconada
 from arclet.cesloi.timing.timers import EveryTimer
 from arclet.cesloi.interrupts import friend_message_handler
@@ -38,7 +39,7 @@ async def test(app: Cesloi, friend: Friend, message: MessageChain, arpamar: Arpa
     await app.send_with(friend, nudge=True)
     await app.send_friend_message(friend, "Hello,World!")
     if arpamar.matched:
-        await app.send_with(friend, MessageChain.create(arpamar.main_argument))
+        await app.send_with(friend, MessageChain.create(arpamar.main_args))
 
 
 @es.register("FriendMessage")
