@@ -79,9 +79,9 @@ async def test(app: Cesloi, friend: Friend):
  - [x] Decorator，用户自定义的处理器
 
 **三期计划**
- - [] Commander， 基于Alconna的指令系统
- - [] 网络层调整
- - 完善文档
+ - [ ] Commander， 基于Alconna的指令系统
+ - [ ] 网络层调整
+ - [ ] 完善文档
 
 ## 鸣谢&相关项目
 > 这些项目也很棒, 去他们的项目页看看, 点个 `Star` 以鼓励他们的开发工作, 毕竟没有他们也没有 `Cesloi`.
