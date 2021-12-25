@@ -70,16 +70,17 @@ async def test(app: Cesloi, friend: Friend):
 
 ## 未来开发计划
 **一期计划**
- - ~~CommandAnalysis， 一个抽象的命令/命令参数处理器~~ (已实现)
- - ~~TimeScheduler， 一个根据时间选择是否执行目标函数的容器~~(已实现)
- - ~~PluginManager， 不局限于在一个文件中运行方法~~ (已实现)
+ - [x] CommandAnalysis， 一个抽象的命令/命令参数处理器
+ - [x] TimeScheduler， 一个根据时间选择是否执行目标函数的容器
+ - [x] PluginManager， 不局限于在一个文件中运行方法
 
 **二期计划**
- - ~~Interrupt, 中断处理~~ (已实现)
- - ~~Decorator，用户自定义的处理器~~ (已实现)
+ - [x] Interrupt, 中断处理
+ - [x] Decorator，用户自定义的处理器
 
 **三期计划**
- - 主题框架再封装
+ - [] Commander， 基于Alconna的指令系统
+ - [] 网络层调整
  - 完善文档
 
 ## 鸣谢&相关项目
