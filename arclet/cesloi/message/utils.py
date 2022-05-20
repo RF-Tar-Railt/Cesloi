@@ -3,13 +3,13 @@ def split_once(text: str, separate: str):  # 相当于另类的pop
     quotation_stack = []
     is_split = True
     for char in text:
-        if char in "'\"":  # 遇到引号括起来的部分跳过分隔
-            if not quotation_stack:
-                is_split = False
-                quotation_stack.append(char)
-            else:
+        if char in "'\"":
+            if quotation_stack:
                 is_split = True
                 quotation_stack.pop(-1)
+            else:
+                is_split = False
+                quotation_stack.append(char)
         if separate == char and is_split:
             break
         out_text += char
@@ -23,13 +23,13 @@ def split(text: str, separate: str = " ", max_split: int = -1):
     while all([text, max_split]):
         out_text = ""
         for char in text:
-            if char in "'\"":  # 遇到引号括起来的部分跳过分隔
-                if not quotation_stack:
-                    is_split = False
-                    quotation_stack.append(char)
-                else:
+            if char in "'\"":
+                if quotation_stack:
                     is_split = True
                     quotation_stack.pop(-1)
+                else:
+                    is_split = False
+                    quotation_stack.append(char)
             if separate == char and is_split:
                 break
             out_text += char

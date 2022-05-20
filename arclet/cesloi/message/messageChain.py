@@ -84,7 +84,7 @@ class MessageChain(Structured):
     def is_instance(self, element_type: Union[str, Type[MessageElement]]) -> bool:
         if isinstance(element_type, str):
             element_type = MessageChain.search_element(element_type)
-        for i, v in enumerate(self.__root__):
+        for v in self.__root__:
             if type(v) in (Source, Quote):
                 continue
             if type(v) is not element_type:
@@ -107,7 +107,7 @@ class MessageChain(Structured):
             index: 位置索引, 默认为0
         """
         ele = self.findall(element_type)
-        return False if not ele else ele[index]
+        return ele[index] if ele else False
 
     def has(self, element_type: Union[str, Type[MessageElement]]) -> bool:
         """
@@ -115,14 +115,13 @@ class MessageChain(Structured):
         无则返回False
         """
         ele = self.findall(element_type)
-        return False if not ele else True
+        return bool(ele)
 
     def pop(self, index: int) -> MessageElement:
         return self.__root__.pop(index)
 
     def index(self, element_type: Union[str, Type[MessageElement]]) -> int:
-        ele = self.find(element_type)
-        if ele:
+        if ele := self.find(element_type):
             return self.__root__.index(ele)
         else:
             raise ValueError(f"{element_type} is not in this MessageChain")
@@ -281,14 +280,10 @@ class MessageChain(Structured):
         return self.remove(Source).remove(Quote).remove(File)
 
     def startswith(self, string: str) -> bool:
-        if not self.__root__:
-            return False
-        return self.to_text().startswith(string)
+        return self.to_text().startswith(string) if self.__root__ else False
 
     def endswith(self, string: str) -> bool:
-        if not self.__root__:
-            return False
-        return self.to_text().endswith(string)
+        return self.to_text().endswith(string) if self.__root__ else False
 
 
 _update_forward_refs()
@@ -296,7 +291,7 @@ _update_forward_refs()
 if __name__ == "__main__":
     from arclet.cesloi.message.element import Plain, At, Image
     msg = MessageChain.create(At(123, display="ccc"), Plain("[bbb]"), Image(base64="aaaa"))
-    print(str(msg))
+    print(msg)
     print(msg.to_text())
     print(msg.to_serialization())
     print(msg.append(At(456)).insert(2, Plain(" ddd")).to_text())

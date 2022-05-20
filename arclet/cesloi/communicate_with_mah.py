@@ -111,8 +111,7 @@ class Communicator:
             )
             raise ValueError(f"Unable to find event: {event_type}", data)
         data = {k: v for k, v in data.items() if k != "type"}
-        event = event_class.parse_obj(data)
-        return event
+        return event_class.parse_obj(data)
 
     async def ws_send_handle(
             self,
@@ -133,10 +132,7 @@ class Communicator:
         result = await future
         del self.wait_response_future[sync_id]
         del future
-        if "data" in result:
-            return result['data']
-        else:
-            return result
+        return result['data'] if "data" in result else result
 
     async def send_handle(
             self,
@@ -147,13 +143,13 @@ class Communicator:
         if not self.bot_session.verifyKey:
             raise ValueError
         data = data or dict()
-        if method == "GET" or method == "get":
+        if method in {"GET", "get"}:
             async with self.client_session.get(
                     URL(f"{self.bot_session.host}/{action}").with_query(data)
             ) as response:
                 response.raise_for_status()
                 response_data = await response.json()
-        elif method == "POST" or method == "update":
+        elif method in {"POST", "update"}:
             async with self.client_session.post(
                     URL(f"{self.bot_session.host}/{action}"), data=json.dumps(data)
             ) as response:
@@ -168,10 +164,7 @@ class Communicator:
             ) as response:
                 response.raise_for_status()
                 response_data = await response.json()
-        if "data" in response_data:
-            resp = response_data['data']
-        else:
-            resp = response_data
+        resp = response_data['data'] if "data" in response_data else response_data
         error_check(response_data)
         return resp
 
@@ -182,11 +175,11 @@ class Communicator:
                 event = await self.parse_to_event(data)
                 with enter_context(bot=self.bot, event_i=event):
                     self.event_system.event_spread(event)
+            elif sync_id in self.wait_response_future:
+                self.wait_response_future.pop(sync_id).set_result(data)
+
             else:
-                if sync_id not in self.wait_response_future:
-                    self.logger.warning(f"syncId {sync_id} not found!")
-                else:
-                    self.wait_response_future.pop(sync_id).set_result(data)
+                self.logger.warning(f"syncId {sync_id} not found!")
 
     async def receive_handle(self, unknown_event_data: dict):
         received_data = unknown_event_data.get('data')
@@ -199,10 +192,7 @@ class Communicator:
         query = {"qq": self.bot_session.account, "verifyKey": self.bot_session.verifyKey}
         if self.bot_session.single_mode:
             del query['qq']
-        async with self.client_session.ws_connect(
-                str(URL(self.bot_session.host + "/all").with_query(query)),
-                autoping=False,
-        ) as connection:
+        async with self.client_session.ws_connect(str(URL(f"{self.bot_session.host}/all").with_query(query)), autoping=False) as connection:
             self.logger.debug("connecting to websocket")
             self.ws_connection = connection
             connected = False
@@ -228,16 +218,14 @@ class Communicator:
                             await self.receive_handle(received_data)
                         except Exception as e:
                             self.logger.exception(f"receive_data has error {e}")
-                    else:
-                        if not received_data['syncId']:
-                            data = received_data['data']
-                            if data['code']:
-                                error_check(data)
+                    elif not received_data['syncId']:
+                        data = received_data['data']
+                        if data['code']:
+                            error_check(data)
 
-                            else:
-                                if not self.bot_session.sessionKey:
-                                    self.bot_session.sessionKey = data.get("session")
-                                    connected = True
+                        elif not self.bot_session.sessionKey:
+                            self.bot_session.sessionKey = data.get("session")
+                            connected = True
                 elif ws_message.type is WSMsgType.CLOSE:
                     self.logger.info("websocket: server close connection.")
                     return
@@ -247,7 +235,7 @@ class Communicator:
                 elif ws_message.type is WSMsgType.PONG:
                     self.logger.debug("websocket: received pong from remote")
                 elif ws_message.type == WSMsgType.ERROR:
-                    self.logger.warning("websocket: connection error: " + ws_message.data)
+                    self.logger.warning(f"websocket: connection error: {ws_message.data}")
                 else:
                     self.logger.warning(f"detected a unknown message type: {ws_message.type}")
         self.logger.info("connection disconnected")

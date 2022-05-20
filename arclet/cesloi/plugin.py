@@ -89,17 +89,18 @@ class Bellidin:
 
     @classmethod
     def _uninstall_subscriber(cls, module_name):
-        if cls._module_target_dict.get(module_name):
-            targets = cls._module_target_dict[module_name]
-            for event_type, subscriber in targets:
-                t_publishers = cls.event_system.get_publisher(event_type)
-                for pub in t_publishers:
-                    pub.internal_delegate[event_type.__name__].subscribers.remove(subscriber)
-                    if not pub.internal_delegate[event_type.__name__].subscribers:
-                        pub.remove_delegate(event_type)
-                        if not pub.internal_delegate:
-                            cls.event_system.remove_publisher(pub)
-            del cls._module_target_dict[module_name]
+        if not cls._module_target_dict.get(module_name):
+            return
+        targets = cls._module_target_dict[module_name]
+        for event_type, subscriber in targets:
+            t_publishers = cls.event_system.get_publisher(event_type)
+            for pub in t_publishers:
+                pub.internal_delegate[event_type.__name__].subscribers.remove(subscriber)
+                if not pub.internal_delegate[event_type.__name__].subscribers:
+                    pub.remove_delegate(event_type)
+                    if not pub.internal_delegate:
+                        cls.event_system.remove_publisher(pub)
+        del cls._module_target_dict[module_name]
 
     @classmethod
     def set_bellidin(cls, event_system, logger):
@@ -136,10 +137,9 @@ class Bellidin:
                 continue
             if os.path.isdir(module):
                 cls.install_plugin(f"{plugin_dir.replace('/', '.')}.{module}")
-                plugin_count += 1
             else:
                 cls.install_plugin(f"{plugin_dir.replace('/', '.')}.{module.split('.')[0]}")
-                plugin_count += 1
+            plugin_count += 1
         cls.logger.info(f"{plugin_count} plugin have been installed")
         return plugin_count
 
@@ -153,8 +153,8 @@ class Bellidin:
         _names = list(cls._modules.keys())
         for file in os.listdir(cls.plugins_dir):
             if file == "__pycache__":
-                for pyc in os.listdir(cls.plugins_dir + "/__pycache__"):
-                    os.remove(cls.plugins_dir + "/__pycache__/" + pyc)
+                for pyc in os.listdir(f"{cls.plugins_dir}/__pycache__"):
+                    os.remove(f"{cls.plugins_dir}/__pycache__/{pyc}")
         for module_name in _names:
             cls.logger.debug(f"plugin: {module_name} uninstalling")
             cls._uninstall_subscriber(module_name)
@@ -182,28 +182,26 @@ class Bellidin:
     @classmethod
     def uninstall_plugin(cls, module_name: str, *args, **kwargs):
         try:
-            if module_name in cls._modules:
-                cls._uninstall_subscriber(module_name)
-                module = cls._modules[module_name].module
-                if hasattr(module, "__end__"):
-                    try:
-                        module.__end__(
-                            *args, **module.__end__.__annotations__
-                        )
-                    except Exception as e:
-                        cls.logger.exception(e)
-                        module.is_close = False
-                    else:
-                        cls.logger.debug(f"plugin: {module.__name__} is uninstalled")
-                        module.is_close = True
-                del cls._modules[module_name]
-                if sys.modules.get(module_name):
-                    del sys.modules[module_name]
-            else:
+            if module_name not in cls._modules:
                 raise ValueError(f"No such plugin named {module_name}")
+            cls._uninstall_subscriber(module_name)
+            module = cls._modules[module_name].module
+            if hasattr(module, "__end__"):
+                try:
+                    module.__end__(
+                        *args, **module.__end__.__annotations__
+                    )
+                except Exception as e:
+                    cls.logger.exception(e)
+                    module.is_close = False
+                else:
+                    cls.logger.debug(f"plugin: {module.__name__} is uninstalled")
+                    module.is_close = True
+            del cls._modules[module_name]
+            if sys.modules.get(module_name):
+                del sys.modules[module_name]
         except Exception as e:
             cls.logger.debug(e)
-            pass
 
     @classmethod
     def reload_plugins(cls, new_plugins_dir: Optional[str] = None):
@@ -229,4 +227,3 @@ class Bellidin:
                 return plugin_count
         except Exception as e:
             cls.logger.exception(e)
-            pass

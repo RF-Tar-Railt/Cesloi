@@ -46,21 +46,20 @@ class FileInfo(BaseModel):
         """
         该方法不返回文件的二进制数据
         """
-        if self.is_file:
-            if isinstance(save_path, str):
-                save_path = Path(save_path)
-            if not self.downloadInfo:
-                raise AttributeError("cannot download")
-            try:
-                with save_path.open("wb") as f_obj:
-                    async with aiohttp.request("GET", self.downloadInfo.url) as resp:
-                        async for result in resp.content:
-                            f_obj.write(result)
-            except Exception as e:
-                save_path.unlink()
-                raise e
-        else:
+        if not self.is_file:
             return
+        if isinstance(save_path, str):
+            save_path = Path(save_path)
+        if not self.downloadInfo:
+            raise AttributeError("cannot download")
+        try:
+            with save_path.open("wb") as f_obj:
+                async with aiohttp.request("GET", self.downloadInfo.url) as resp:
+                    async for result in resp.content:
+                        f_obj.write(result)
+        except Exception as e:
+            save_path.unlink()
+            raise e
 
 
 FileInfo.update_forward_refs(FileInfo=FileInfo)
