@@ -1,7 +1,5 @@
 from typing import Any, TYPE_CHECKING
 from arclet.letoderea.entities.event import TemplateEvent
-if TYPE_CHECKING:
-    pass
 
 
 class ApplicationRunning(TemplateEvent):

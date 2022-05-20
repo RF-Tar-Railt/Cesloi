@@ -183,15 +183,6 @@ class RouteTimer(Timer):
         minute = now.minute
         second = now.second
         for k, v in self.interval.items():
-            if k == 'seconds':
-                if v - second < 0:
-                    minute += 1
-                second = v
-            if k == 'minutes':
-                if v - minute < 0:
-                    hour += 1
-                minute = v
-                second = 0
             if k == 'hours':
                 if v - hour < 0:
                     day += 1
@@ -199,7 +190,16 @@ class RouteTimer(Timer):
                 minute = 0
                 second = 0
 
-            if k == 'weeks':
+            elif k == 'minutes':
+                if v - minute < 0:
+                    hour += 1
+                minute = v
+                second = 0
+            elif k == 'seconds':
+                if v - second < 0:
+                    minute += 1
+                second = v
+            elif k == 'weeks':
                 hour = 0
                 minute = 0
                 second = 0

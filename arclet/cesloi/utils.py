@@ -43,14 +43,10 @@ code_exceptions_mapping: Dict[int, Type[Exception]] = {
 
 def error_check(code: Union[dict, int]):
     origin = code
-    if isinstance(code, dict):
-        code = code.get("code")
-    else:
-        code = code
+    code = code.get("code") if isinstance(code, dict) else code
     if not isinstance(code, int) or code == 200 or code == 0:
         return
-    exc_cls = code_exceptions_mapping.get(code)
-    if exc_cls:
+    if exc_cls := code_exceptions_mapping.get(code):
         raise exc_cls(exc_cls.__doc__)
     else:
         raise UnknownError(f"{origin}")
@@ -128,18 +124,15 @@ def enter_message_send_context(method: UploadMethods):
 
 @contextmanager
 def enter_context(bot=None, event_i=None):
-    t1 = None
-    t2 = None
     t3 = None
     t4 = None
 
+    t1 = None
     if bot:
         t1 = bot_application.set(bot)
         t3 = event_loop.set(bot.event_system.loop)
         t4 = event_system.set(bot.event_system)
-    if event_i:
-        t2 = event.set(event_i)
-
+    t2 = event.set(event_i) if event_i else None
     yield
     try:
         if t1:

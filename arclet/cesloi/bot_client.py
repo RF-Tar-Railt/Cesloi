@@ -57,13 +57,13 @@ class Cesloi:
 
     @staticmethod
     def loguru_excepthook(cls, val, tb, *_, **__):
-        Logger.logger.opt(exception=(cls, val, tb)).error(f"Exception:")
+        Logger.logger.opt(exception=(cls, val, tb)).error("Exception:")
 
     @staticmethod
     def loguru_async_handler(loop, ctx: dict):
-        Logger.logger.opt(exception=(Exception, ctx["message"], ctx["source_traceback"])).error(
-            f"Exception:"
-        )
+        Logger.logger.opt(
+            exception=(Exception, ctx["message"], ctx["source_traceback"])
+        ).error("Exception:")
 
     async def logger_group_message(self, event: GroupMessage):
         self.logger.info(
@@ -124,25 +124,26 @@ class Cesloi:
         self.logger.debug("Cesloi Network Stopped.")
 
     async def close(self):
-        if self.running:
-            self.event_system.event_spread(ApplicationStop(self))
-            self.running = False
-            self.uninstall_plugins()
-            if self.daemon_task:
-                self.daemon_task.cancel()
-                self.daemon_task = None
-            await self.communicator.stop()
-            for t in asyncio.all_tasks(self.event_system.loop):
-                if (
-                        t is not asyncio.current_task(self.event_system.loop)
-                        and not t.get_name().startswith("cesloi")
-                        and not t.get_name().startswith("_")
-                ):
-                    t.cancel()
-                    try:
-                        await t
-                    except asyncio.CancelledError:
-                        pass
+        if not self.running:
+            return
+        self.event_system.event_spread(ApplicationStop(self))
+        self.running = False
+        self.uninstall_plugins()
+        if self.daemon_task:
+            self.daemon_task.cancel()
+            self.daemon_task = None
+        await self.communicator.stop()
+        for t in asyncio.all_tasks(self.event_system.loop):
+            if (
+                    t is not asyncio.current_task(self.event_system.loop)
+                    and not t.get_name().startswith("cesloi")
+                    and not t.get_name().startswith("_")
+            ):
+                t.cancel()
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass
 
     def start(self, loop: Optional[asyncio.AbstractEventLoop] = None):
         if self.event_system:
@@ -308,14 +309,14 @@ class Cesloi:
             group : 已知的群组
         """
         if target and group:
-            if isinstance(target, Member) or isinstance(target, int):
+            if isinstance(target, (Member, int)):
                 return await self.get_member_profile(target, group)
             return await self.get_friend_profile(target)
-        if target and not group:
-            if isinstance(target, Friend) or isinstance(target, int):
+        if target:
+            if isinstance(target, (Friend, int)):
                 return await self.get_friend_profile(target)
             return await self.get_member_profile(target)
-        if not target and group:
+        if group:
             raise ValueError("Missing argument: target")
         return await self.get_bot_profile()
 
@@ -463,9 +464,8 @@ class Cesloi:
             target = target.sender
         else:
             target = target
-        if nudge:
-            if isinstance(target, Friend) or isinstance(target, Member):
-                await self.send_nudge(target)
+        if nudge and (isinstance(target, Friend) or isinstance(target, Member)):
+            await self.send_nudge(target)
         if messages:
             data = {"message": messages, "target": target}
             if quote:
@@ -544,13 +544,12 @@ class Cesloi:
             mute_all : 是否开启全体禁言,要求群组参数为必填.
         """
         if target:
-            if not group:
-                if isinstance(target, Member):
-                    group_id = target.group.id
-                else:
-                    raise ValueError("Missing Argument: group")
-            else:
+            if group:
                 group_id = group.id if isinstance(group, Group) else group
+            elif isinstance(target, Member):
+                group_id = target.group.id
+            else:
+                raise ValueError("Missing Argument: group")
             await self.communicator.send_handle(
                 "mute",
                 "POST",
@@ -582,13 +581,12 @@ class Cesloi:
             unmute_all : 是否解除全体禁言,要求群组参数为必填;
         """
         if target:
-            if not group:
-                if isinstance(target, Member):
-                    group_id = target.group.id
-                else:
-                    raise ValueError("Missing Argument: group")
-            else:
+            if group:
                 group_id = group.id if isinstance(group, Group) else group
+            elif isinstance(target, Member):
+                group_id = target.group.id
+            else:
+                raise ValueError("Missing Argument: group")
             await self.communicator.send_handle(
                 "unmute",
                 "POST",
@@ -613,13 +611,12 @@ class Cesloi:
         """
         使用此方法移除指定群成员（需要有相关限权）
         """
-        if not group:
-            if isinstance(target, Member):
-                group_id = target.group.id
-            else:
-                raise ValueError("Missing Argument: group")
-        else:
+        if group:
             group_id = group.id if isinstance(group, Group) else group
+        elif isinstance(target, Member):
+            group_id = target.group.id
+        else:
+            raise ValueError("Missing Argument: group")
         await self.communicator.send_handle(
             "kick",
             "POST",

@@ -54,9 +54,7 @@ async def test1(app: Cesloi, friend: Friend, message: MessageChain):
 async def test2(app: Cesloi, city: MessageChain, group: Group, arpamar: Arpamar):
     if arpamar.matched:
         city_name = arpamar.header
-        city_day = ""
-        if arpamar.has('d'):
-            city_day = arpamar.get('d')['days']
+        city_day = arpamar.get('d')['days'] if arpamar.has('d') else ""
         await app.send_group_message(group, MessageChain([Plain(city_name + city_day)]), quote=city.find("Source"))
 
 

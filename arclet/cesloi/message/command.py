@@ -64,10 +64,7 @@ class Command:
         if not headers and not main:
             raise ValueError("Must choose one parameter!")
         self.headers = headers or [""]
-        if main:
-            self.main = self.to_subcommand(main)
-        else:
-            self.main = None
+        self.main = self.to_subcommand(main) if main else None
 
     def to_subcommand(self, cl):
         if not cl:
@@ -79,9 +76,7 @@ class Command:
                 if isinstance(args[0], str):
                     args = self.to_subcommand(args)
                 else:
-                    args = []
-                    for sub in cl[1]:
-                        args.append(self.to_subcommand(sub))
+                    args = [self.to_subcommand(sub) for sub in cl[1]]
             if len(cl) > 2:
                 sep = cl[2]
                 return Subcommand(name, args, separate=sep)
@@ -96,16 +91,11 @@ class Command:
                 break
         cmd = cmd.lstrip(' ')
         if not self.main:
-            if cmd == "":
-                return True
-            return False
+            return cmd == ""
         for pat in self.main.analysis_content():
-            pattern = re.compile('^' + pat + '$')
-            result = pattern.findall(cmd)
-            if result:
-                if result[0] == cmd:
-                    return True
-                return result[0]
+            pattern = re.compile(f'^{pat}$')
+            if result := pattern.findall(cmd):
+                return True if result[0] == cmd else result[0]
         return False
 
 
